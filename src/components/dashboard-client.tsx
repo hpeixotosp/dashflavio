@@ -1139,7 +1139,7 @@ function TableExpensesList({
   };
 
   return (
-    <div className="overflow-x-auto w-full">
+    <div className="w-full">
       <Table>
         <TableHeader>
           <TableRow className="border-b border-border hover:bg-transparent">

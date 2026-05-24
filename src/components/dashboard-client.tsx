@@ -945,11 +945,11 @@ function TableExpensesList({
       <Table>
         <TableHeader>
           <TableRow className="border-b border-border hover:bg-transparent">
-            <TableHead className="w-[80px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
             <TableHead className="font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
-            <TableHead className="w-[120px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
-            <TableHead className="w-[170px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
-            <TableHead className="w-[60px] text-center"></TableHead> {/* Lixeira */}
+            <TableHead className="hidden md:table-cell w-[100px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
+            <TableHead className="w-[110px] md:w-[150px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
+            <TableHead className="w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
+            <TableHead className="w-[50px] text-center"></TableHead> {/* Lixeira */}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1003,22 +1003,7 @@ function TableExpensesList({
                   ${isSaved ? "bg-primary/5" : ""}
                 `}
               >
-                {/* 1. Checkbox Pago */}
-                <TableCell className="py-4 text-center">
-                  <button
-                    onClick={() => onTogglePaid(exp.id)}
-                    className={`h-7 w-7 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none cursor-pointer
-                      ${exp.paid 
-                        ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20" 
-                        : "border-slate-700 bg-background hover:border-slate-500"
-                      }`}
-                    title={exp.paid ? "Marcar como pendente" : "Marcar como pago"}
-                  >
-                    {exp.paid && <Check className="h-4 w-4 stroke-[3]" />}
-                  </button>
-                </TableCell>
-
-                {/* 2. Nome + Data de Pagamento Integrada logo abaixo */}
+                {/* 1. Nome + Data de Pagamento Integrada logo abaixo */}
                 <TableCell className={`py-4 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"}`}>
                   <div className="flex flex-col">
                     <span className={exp.paid ? "line-through text-slate-500 font-medium" : ""}>
@@ -1044,12 +1029,12 @@ function TableExpensesList({
                   </div>
                 </TableCell>
                 
-                {/* 3. Tipo Badge */}
-                <TableCell className="py-4">
+                {/* 2. Tipo Badge (Oculto no mobile) */}
+                <TableCell className="py-4 hidden md:table-cell">
                   {badgeComponent}
                 </TableCell>
 
-                {/* 4. Valor Editável */}
+                {/* 3. Valor Editável */}
                 <TableCell className="py-4 text-right whitespace-nowrap">
                   {isEditing ? (
                     <div className="flex items-center justify-end gap-1.5">
@@ -1088,6 +1073,21 @@ function TableExpensesList({
                       )}
                     </div>
                   )}
+                </TableCell>
+
+                {/* 4. Checkbox Pago */}
+                <TableCell className="py-4 text-center">
+                  <button
+                    onClick={() => onTogglePaid(exp.id)}
+                    className={`h-7 w-7 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none cursor-pointer mx-auto
+                      ${exp.paid 
+                        ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20" 
+                        : "border-slate-700 bg-background hover:border-slate-500"
+                      }`}
+                    title={exp.paid ? "Marcar como pendente" : "Marcar como pago"}
+                  >
+                    {exp.paid && <Check className="h-4 w-4 stroke-[3]" />}
+                  </button>
                 </TableCell>
 
                 {/* 5. Excluir Conta por Padrão */}

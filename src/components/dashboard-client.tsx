@@ -244,7 +244,17 @@ const cleanName = (name: string) => {
 };
 
 export default function DashboardClient() {
-  const [data, setData] = useState<MonthData[]>([]);
+  const [data, setData] = useState<MonthData[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("dashflavio_data_v11");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {}
+      }
+    }
+    return [];
+  });
   const [selectedMonthId, setSelectedMonthId] = useState<string>("maio");
   const [savedFeedbacks, setSavedFeedbacks] = useState<Record<string, boolean>>({});
   const [isLargeText, setIsLargeText] = useState<boolean>(false);
@@ -263,20 +273,57 @@ export default function DashboardClient() {
   const [newCreditType, setNewCreditType] = useState<"fixed" | "installment">("fixed");
   const [newCreditInstallments, setNewCreditInstallments] = useState<string>("1");
 
-  useEffect(() => {
-    // Nova chave V10 para recarregar com Dente pago por padrão
-    const stored = localStorage.getItem("dashflavio_data_v11");
-    if (stored) {
-      try {
-        setData(JSON.parse(stored));
-      } catch (e) {
-        setData(generateInitialDashboardData());
+  // Função central para persistir no LocalStorage e sincronizar com o banco na nuvem
+  const updateAndSyncData = (updated: MonthData[]) => {
+    setData(updated);
+    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
+
+    // Salva na nuvem (Vercel KV) de forma assíncrona
+    fetch("/api/data", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updated),
+    }).then(res => {
+      if (!res.ok) {
+        console.warn("O banco de dados na nuvem Vercel KV não está conectado ou ocorreu um erro.");
       }
-    } else {
-      const initial = generateInitialDashboardData();
-      setData(initial);
-      localStorage.setItem("dashflavio_data_v11", JSON.stringify(initial));
-    }
+    }).catch(err => {
+      console.warn("Erro ao sincronizar com a nuvem (cache local mantido):", err);
+    });
+  };
+
+  useEffect(() => {
+    // Sincroniza e valida em segundo plano com o banco de dados Vercel KV (nuvem)
+    const syncWithCloud = async () => {
+      try {
+        const res = await fetch("/api/data");
+        const json = await res.json();
+
+        if (json && json.data) {
+          const cloudDataStr = JSON.stringify(json.data);
+          const localDataStr = localStorage.getItem("dashflavio_data_v11");
+
+          if (cloudDataStr !== localDataStr) {
+            setData(json.data);
+            localStorage.setItem("dashflavio_data_v11", cloudDataStr);
+          }
+          return;
+        }
+      } catch (err) {
+        console.warn("Banco de dados em nuvem offline ou não configurado (rodando localmente):", err);
+      }
+
+      // Se não havia cache local e o banco falhou, gera dados iniciais padrão
+      if (data.length === 0) {
+        const initial = generateInitialDashboardData();
+        setData(initial);
+        localStorage.setItem("dashflavio_data_v11", JSON.stringify(initial));
+      }
+    };
+
+    syncWithCloud();
 
     const storedTextSize = localStorage.getItem("dashflavio_large_text");
     if (storedTextSize === "true") {
@@ -352,8 +399,7 @@ export default function DashboardClient() {
       }
       return m;
     });
-    setData(updated);
-    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
+    updateAndSyncData(updated);
   };
 
   // Alterar data de pagamento manualmente
@@ -370,8 +416,7 @@ export default function DashboardClient() {
       }
       return m;
     });
-    setData(updated);
-    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
+    updateAndSyncData(updated);
   };
 
   // Alterar Provento do Mês
@@ -382,8 +427,7 @@ export default function DashboardClient() {
       }
       return m;
     });
-    setData(updated);
-    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
+    updateAndSyncData(updated);
   };
 
   // Alterar valor da despesa na tabela
@@ -401,8 +445,7 @@ export default function DashboardClient() {
       return m;
     });
     
-    setData(updated);
-    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
+    updateAndSyncData(updated);
 
     setSavedFeedbacks(prev => ({ ...prev, [expenseId]: true }));
     setTimeout(() => {
@@ -419,8 +462,7 @@ export default function DashboardClient() {
         }
         return m;
       });
-      setData(updated);
-      localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
+      updateAndSyncData(updated);
     }
   };
 
@@ -459,8 +501,7 @@ export default function DashboardClient() {
       return m;
     });
 
-    setData(updated);
-    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
+    updateAndSyncData(updated);
 
     setNewAccName("");
     setNewAccValue("");
@@ -504,8 +545,7 @@ export default function DashboardClient() {
       return m;
     });
 
-    setData(updated);
-    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
+    updateAndSyncData(updated);
 
     setNewCreditName("");
     setNewCreditValue("");

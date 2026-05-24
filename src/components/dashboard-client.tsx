@@ -1166,8 +1166,8 @@ function TableExpensesList({
           <TableRow className="border-b border-border hover:bg-transparent">
             <TableHead className="px-1.5 md:px-3 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
             <TableHead className="px-1.5 md:px-3 hidden md:table-cell w-[80px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
-            <TableHead className="px-1.5 md:px-3 w-[100px] md:w-[120px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
-            <TableHead className="px-1.5 md:px-3 w-[60px] md:w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
+            <TableHead className="px-0.5 md:px-3 w-[90px] md:w-[140px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
+            <TableHead className="px-1 md:px-3 w-[44px] md:w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1264,10 +1264,10 @@ function TableExpensesList({
                 </TableCell>
 
                 {/* 3. Valor Editável */}
-                <TableCell className="px-1.5 md:px-3 py-3.5 text-right whitespace-nowrap">
+                <TableCell className="px-0.5 md:px-3 py-3.5 text-right">
                   {isEditing ? (
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span className="text-slate-500 text-sm font-bold">R$</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-slate-500 text-xs font-bold">R$</span>
                       <Input
                         type="number"
                         value={tempValue}
@@ -1277,7 +1277,7 @@ function TableExpensesList({
                           if (e.key === "Enter") handleSaveEdit(exp.id);
                           if (e.key === "Escape") setEditingId(null);
                         }}
-                        className={`w-24 text-right font-extrabold bg-background h-9 rounded-lg px-2 border-2
+                        className={`w-20 md:w-24 text-right font-extrabold bg-background h-8 rounded-lg px-2 border-2
                           ${exp.type === "adjustment" ? "text-emerald-400 border-emerald-500/40 focus:border-emerald-500" : "text-rose-500 border-rose-500/40 focus:border-rose-500"}`}
                         autoFocus
                         step="0.01"
@@ -1286,7 +1286,7 @@ function TableExpensesList({
                   ) : (
                     <div 
                       onClick={() => handleStartEdit(exp)}
-                      className={`inline-flex items-center gap-1.5 cursor-pointer rounded-xl px-2.5 py-1.5 border whitespace-nowrap bg-background/50 hover:bg-muted transition-colors
+                      className={`inline-flex flex-col items-end cursor-pointer rounded-xl px-1.5 md:px-2.5 py-1 md:py-1.5 border bg-background/50 hover:bg-muted transition-colors
                         ${exp.type === "adjustment" 
                           ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40 font-black" 
                           : ""
@@ -1302,22 +1302,23 @@ function TableExpensesList({
                         ${isFuture && exp.value === 0 && exp.type === "consumption" 
                           ? "border-dashed border-amber-500/40 bg-amber-500/5 text-amber-400 hover:border-amber-500/60 hover:bg-amber-950/20" 
                           : ""
-                        }
-                        ${isLargeText ? "text-xl" : "text-lg"}`}
+                        }`}
                       title="Clique para editar o valor"
                     >
-                      <span>
-                        R$ {exp.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      {/* No mobile: R$ em cima, valor embaixo — para caber na tela */}
+                      <span className="text-[10px] md:hidden leading-none opacity-70">R$</span>
+                      <span className={`leading-tight ${isLargeText ? "text-base md:text-xl" : "text-sm md:text-lg"}`}>
+                        <span className="hidden md:inline">R$ </span>{exp.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </span>
                       {isSaved && (
-                        <CheckCircle className="h-4.5 w-4.5 text-emerald-500 animate-bounce stroke-[2.5]" />
+                        <CheckCircle className="h-3.5 w-3.5 md:h-4.5 md:w-4.5 text-emerald-500 animate-bounce stroke-[2.5]" />
                       )}
                     </div>
                   )}
                 </TableCell>
 
                 {/* 4. Checkbox Pago / Badge de Crédito */}
-                <TableCell className="px-1.5 md:px-3 py-3.5 text-center">
+                <TableCell className="px-1 md:px-3 py-3.5 text-center">
                   {exp.type !== "adjustment" ? (
                     <button
                       onClick={() => onTogglePaid(exp.id)}

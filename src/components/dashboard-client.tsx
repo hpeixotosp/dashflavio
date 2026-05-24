@@ -313,8 +313,9 @@ export default function DashboardClient() {
   // Total de descontos
   const totalAdjustments = adjustments.reduce((sum, e) => sum + e.value, 0);
 
-  // Total de Gastos Líquidos (Saídas)
-  const totalExpensesValue = Math.max(0, grossExpenses - totalAdjustments);
+  // Contabilidade Limpa:
+  // Total de Gastos (Saídas) é a soma das contas brutas (boletos reais)
+  const totalExpensesValue = grossExpenses;
 
   // 2. Entradas = Proventos + Reembolsos
   const totalIncomeValue = proventosValue + totalAdjustments;
@@ -538,13 +539,18 @@ export default function DashboardClient() {
     const mFixed = m.expenses.filter(e => e.type === "fixed").reduce((sum, e) => sum + e.value, 0);
     const mInstallments = m.expenses.filter(e => e.type === "installment").reduce((sum, e) => sum + e.value, 0);
     const mAdjustments = m.expenses.filter(e => e.type === "adjustment").reduce((sum, e) => sum + e.value, 0);
-    const mTotal = Math.max(0, (mConsumption + mFixed + mInstallments) - mAdjustments);
+    
+    // Contabilidade Limpa:
+    // "Total Gastos" do gráfico representa os gastos brutos reais de boletos
+    const mTotalExpenses = mConsumption + mFixed + mInstallments;
+    // "Receitas" do gráfico representa as entradas totais (Proventos + Reembolsos)
+    const mTotalIncome = m.proventos + mAdjustments;
 
     return {
       id: m.id,
       name: m.name,
-      "Total Gastos": Number(mTotal.toFixed(2)),
-      "Receitas": m.proventos
+      "Total Gastos": Number(mTotalExpenses.toFixed(2)),
+      "Receitas": Number(mTotalIncome.toFixed(2))
     };
   });
 
@@ -815,7 +821,7 @@ export default function DashboardClient() {
                   <TrendingUp className="h-7 w-7 stroke-[2.5]" />
                 </div>
                 <div className="flex-1">
-                  <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider block">Minhas Entradas</span>
+                  <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider block">Minhas Entradas (Proventos)</span>
                   <span className="text-[10px] text-muted-foreground/60 font-semibold mt-0.5 block">Altere clicando no número:</span>
                   <div className="relative mt-2.5 flex items-center">
                     <span className="mr-1 text-slate-400 font-bold text-xl">R$</span>
@@ -830,6 +836,11 @@ export default function DashboardClient() {
                       title="Clique aqui para alterar o valor de proventos deste mês"
                     />
                   </div>
+                  {totalAdjustments > 0 && (
+                    <div className="mt-2 text-xs font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-2.5 py-1.5 inline-block">
+                      + R$ {totalAdjustments.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} de reembolsos <span className="text-slate-400 font-semibold">= Total:</span> R$ {totalIncomeValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

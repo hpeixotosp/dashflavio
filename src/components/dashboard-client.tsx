@@ -8,15 +8,13 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Download, 
-  RotateCcw, 
   Zap, 
   Calendar, 
   CreditCard, 
   Percent, 
-  HelpCircle,
-  Lightbulb,
   CheckCircle,
-  Info
+  Sparkles,
+  Type
 } from "lucide-react";
 import { 
   Card, 
@@ -35,20 +33,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Configuração para Recharts
 import { 
@@ -63,7 +48,7 @@ import {
 } from "recharts";
 
 // ==========================================================================
-// 1. ESTRUTURA DE DADOS INICIAL
+// 1. ESTRUTURA DE DADOS INICIAL E CONSTANTES
 // ==========================================================================
 
 interface Expense {
@@ -101,7 +86,7 @@ const MONTH_NAMES: Record<string, string> = {
   dezembro: "Dezembro"
 };
 
-// Despesas gerais que ocorrem em Abril
+// Despesas gerais descritas inicialmente (Valores de Abril)
 const INITIAL_GENERAL_EXPENSES: Expense[] = [
   { id: "sabesp", name: "Sabesp*", type: "consumption", value: 100.00, isAsterisk: true },
   { id: "cpfl", name: "CPFL*", type: "consumption", value: 414.95, isAsterisk: true },
@@ -149,93 +134,52 @@ const INITIAL_APRIL_ADJUSTMENT: Expense = {
 };
 
 // ==========================================================================
-// FUNÇÃO GERADORA DE DADOS ANUAIS (ABRIL A DEZEMBRO 2026)
+// 2. LOGICA DE EVOLUÇÃO TEMPORAL (COM CONTAS VARIÁVEIS ZERADAS EM MAIO)
 // ==========================================================================
 const generateInitialDashboardData = (): MonthData[] => {
   const data: MonthData[] = [];
 
   MONTHS_ORDER.forEach((monthId, index) => {
-    // 1. Proventos
-    let proventos = 8480.00;
-    if (monthId === "abril") {
-      proventos = 0.00;
-    }
-
+    // Proventos: Abril é R$ 0,00. Maio a Dezembro padrão R$ 8.480,00.
+    const proventos = monthId === "abril" ? 0.00 : 8480.00;
     const expenses: Expense[] = [];
 
-    // Em abril, colocamos TODOS os gastos descritos
+    // Mês 0: ABRIL - Tudo preenchido conforme dados originais
     if (monthId === "abril") {
       expenses.push(...JSON.parse(JSON.stringify(INITIAL_GENERAL_EXPENSES)));
       expenses.push(...JSON.parse(JSON.stringify(INITIAL_APRIL_SPECIFIC_EXPENSES)));
       expenses.push(JSON.parse(JSON.stringify(INITIAL_APRIL_ADJUSTMENT)));
     } 
-    // Em maio, mantemos o valor de consumo e evoluímos as parcelas
-    else if (monthId === "maio") {
-      // Gerais de Maio
-      expenses.push(...JSON.parse(JSON.stringify(INITIAL_GENERAL_EXPENSES)));
-      
-      // Fixas recorrentes extras
-      expenses.push(
-        { id: "casa", name: "Casa", type: "fixed", value: 1500.00, isAsterisk: false },
-        { id: "vivo", name: "Vivo", type: "fixed", value: 150.00, isAsterisk: false },
-        { id: "osan", name: "OSAN", type: "fixed", value: 65.00, isAsterisk: false }
-      );
-
-      // Consumo extras que têm o mesmo valor em Maio
-      expenses.push(
-        { id: "compras", name: "Compras*", type: "consumption", value: 510.00, isAsterisk: true },
-        { id: "ifood", name: "IFOOD*", type: "consumption", value: 135.00, isAsterisk: true }
-      );
-
-      // Evolução de parcelas a partir de Abril (Abril era a base index 0)
-      // Calculamos: Abril foi +0 parcelas. Maio é +1 parcela.
-      INITIAL_APRIL_SPECIFIC_EXPENSES.forEach(exp => {
-        if (exp.type === "installment" && exp.installments) {
-          const nextInstallmentNum = exp.installments.current + 1;
-          if (nextInstallmentNum <= exp.installments.total) {
-            expenses.push({
-              ...JSON.parse(JSON.stringify(exp)),
-              name: `${exp.name.split(" ")[0]} (${nextInstallmentNum}/${exp.installments.total})`,
-              installments: {
-                current: nextInstallmentNum,
-                total: exp.installments.total
-              }
-            });
-          }
-        }
-      });
-    }
-    // A partir de Junho, zeramos as de consumo (*) e as parcelas continuam evoluindo
+    // Mês >= 1: MAIO A DEZEMBRO - Variáveis zeradas e parcelas evoluindo
     else {
-      // Diferença em meses desde Abril
-      const diffMonths = index; // Abril é 0, Maio é 1, Junho é 2, etc.
-
-      // 1. Contas de consumo com asterisco (zeradas a partir de Junho)
+      // 1. Contas de consumo fixas/recorrentes da lista geral
       INITIAL_GENERAL_EXPENSES.forEach(exp => {
         if (exp.isAsterisk) {
+          // Zeradas a partir de Maio conforme a nova regra
           expenses.push({ ...JSON.parse(JSON.stringify(exp)), value: 0.00 });
         } else {
           expenses.push(JSON.parse(JSON.stringify(exp)));
         }
       });
 
-      // Fixas extras repetem o valor
+      // 2. Despesas específicas fixas extras (Casa, Vivo, OSAN)
       expenses.push(
         { id: "casa", name: "Casa", type: "fixed", value: 1500.00, isAsterisk: false },
         { id: "vivo", name: "Vivo", type: "fixed", value: 150.00, isAsterisk: false },
         { id: "osan", name: "OSAN", type: "fixed", value: 65.00, isAsterisk: false }
       );
 
-      // Consumos extras zerados
+      // 3. Despesas específicas de consumo extras (Compras, IFOOD) - Zeradas a partir de Maio
       expenses.push(
         { id: "compras", name: "Compras*", type: "consumption", value: 0.00, isAsterisk: true },
         { id: "ifood", name: "IFOOD*", type: "consumption", value: 0.00, isAsterisk: true }
       );
 
-      // Evolução das parcelas
+      // 4. Lógica de evolução das parcelas a partir de Abril (mês base)
+      // index indica quantos meses se passaram desde Abril (Abril = 0, Maio = 1, Junho = 2, etc.)
       INITIAL_APRIL_SPECIFIC_EXPENSES.forEach(exp => {
         if (exp.type === "installment" && exp.installments) {
-          const nextInstallmentNum = exp.installments.current + diffMonths;
+          const nextInstallmentNum = exp.installments.current + index;
           if (nextInstallmentNum <= exp.installments.total) {
             expenses.push({
               ...JSON.parse(JSON.stringify(exp)),
@@ -261,13 +205,15 @@ const generateInitialDashboardData = (): MonthData[] => {
   return data;
 };
 
+// ==========================================================================
+// 3. COMPONENTE PRINCIPAL (PREMIUM & CLEAN STYLE)
+// ==========================================================================
 export default function DashboardClient() {
   const [data, setData] = useState<MonthData[]>([]);
-  const [selectedMonthId, setSelectedMonthId] = useState<string>("maio"); // Inicializa em Maio por padrão
+  const [selectedMonthId, setSelectedMonthId] = useState<string>("maio");
   const [savedFeedbacks, setSavedFeedbacks] = useState<Record<string, boolean>>({});
   const [isLargeText, setIsLargeText] = useState<boolean>(false);
 
-  // Inicialização do LocalStorage
   useEffect(() => {
     const stored = localStorage.getItem("dashflavio_data");
     if (stored) {
@@ -290,47 +236,36 @@ export default function DashboardClient() {
 
   if (data.length === 0) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <p className="text-xl font-bold text-slate-700 animate-pulse">Carregando painel financeiro...</p>
+      <div className="flex h-screen items-center justify-center bg-slate-900">
+        <p className="text-xl font-bold text-blue-400 animate-pulse font-sans tracking-wide">Carregando painel premium...</p>
       </div>
     );
   }
 
-  const selectedMonth = data.find(m => m.id === selectedMonthId) || data[1]; // Fallback para Maio
+  const selectedMonth = data.find(m => m.id === selectedMonthId) || data[1];
 
   // ==========================================================================
-  // CÁLCULOS DINÂMICOS DO MÊS SELECIONADO
+  // CÁLCULOS FINANCEIROS
   // ==========================================================================
-  
-  // Total de Entradas
   const proventosValue = selectedMonth.proventos;
 
-  // Separar gastos por tipo
   const consumptionExpenses = selectedMonth.expenses.filter(e => e.type === "consumption");
   const fixedExpenses = selectedMonth.expenses.filter(e => e.type === "fixed");
   const installmentExpenses = selectedMonth.expenses.filter(e => e.type === "installment");
   const adjustments = selectedMonth.expenses.filter(e => e.type === "adjustment");
 
-  // Gastos brutos (sem os descontos/ajustes)
   const grossExpenses = 
     consumptionExpenses.reduce((sum, e) => sum + e.value, 0) +
     fixedExpenses.reduce((sum, e) => sum + e.value, 0) +
     installmentExpenses.reduce((sum, e) => sum + e.value, 0);
 
-  // Descontos
   const totalAdjustments = adjustments.reduce((sum, e) => sum + e.value, 0);
-
-  // Gastos líquidos (Gastos - Descontos)
   const totalExpensesValue = Math.max(0, grossExpenses - totalAdjustments);
-
-  // Saldo Final
   const balanceValue = proventosValue - totalExpensesValue;
 
   // ==========================================================================
-  // MANIPULADORES DE EDICAO DE VALORES
+  // MANIPULADORES DE EDICAO
   // ==========================================================================
-  
-  // Atualiza Provento
   const handleProventoChange = (val: number) => {
     const updated = data.map(m => {
       if (m.id === selectedMonthId) {
@@ -342,7 +277,6 @@ export default function DashboardClient() {
     localStorage.setItem("dashflavio_data", JSON.stringify(updated));
   };
 
-  // Atualiza Despesa específica
   const handleExpenseChange = (expenseId: string, val: number) => {
     const updated = data.map(m => {
       if (m.id === selectedMonthId) {
@@ -360,24 +294,13 @@ export default function DashboardClient() {
     setData(updated);
     localStorage.setItem("dashflavio_data", JSON.stringify(updated));
 
-    // Feedback visual temporário de "Salvo!"
+    // Feedback visual suave de salvamento
     setSavedFeedbacks(prev => ({ ...prev, [expenseId]: true }));
     setTimeout(() => {
       setSavedFeedbacks(prev => ({ ...prev, [expenseId]: false }));
     }, 1000);
   };
 
-  // Resetar dados para o padrão
-  const handleReset = () => {
-    if (confirm("Você quer restaurar todos os valores do painel de volta para as configurações iniciais? Todas as suas alterações manuais serão perdidas.")) {
-      const initial = generateInitialDashboardData();
-      setData(initial);
-      localStorage.setItem("dashflavio_data", JSON.stringify(initial));
-      setSelectedMonthId("maio");
-    }
-  };
-
-  // Exportar dados para arquivo JSON
   const handleExport = () => {
     const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
       JSON.stringify(data, null, 2)
@@ -390,16 +313,12 @@ export default function DashboardClient() {
     downloadAnchor.remove();
   };
 
-  // Alterna tamanho da fonte para idosos
   const toggleTextSize = () => {
     const newVal = !isLargeText;
     setIsLargeText(newVal);
     localStorage.setItem("dashflavio_large_text", String(newVal));
   };
 
-  // ==========================================================================
-  // ESTRUTURAÇÃO DOS DADOS PARA O GRÁFICO
-  // ==========================================================================
   const chartData = data.map(m => {
     const mConsumption = m.expenses.filter(e => e.type === "consumption").reduce((sum, e) => sum + e.value, 0);
     const mFixed = m.expenses.filter(e => e.type === "fixed").reduce((sum, e) => sum + e.value, 0);
@@ -410,214 +329,92 @@ export default function DashboardClient() {
     return {
       id: m.id,
       name: m.name,
-      "Total Gastos": Number(mTotal.toFixed(2)),
+      "Gastos": Number(mTotal.toFixed(2)),
       "Receitas": m.proventos
     };
   });
-
-  // ==========================================================================
-  // CONSELHOS FINANCEIROS DINÂMICOS
-  // ==========================================================================
-  const getFinancialTips = () => {
-    const tips = [];
-    
-    if (selectedMonthId === "abril") {
-      tips.push({
-        title: "Início dos registros financeiros",
-        text: "Este é o mês inicial da sua tabela. Todos os gastos parcelados (15 contas) estão ativos. O provento é R$ 0,00 pois começamos as receitas no próximo mês.",
-        emoji: "📋",
-        color: "amber"
-      });
-      tips.push({
-        title: "Ajuda importante registrada",
-        text: "Uma dedução de R$ 210,00 referente à ajuda do seu filhinho foi cadastrada neste mês para reduzir o total líquido das despesas.",
-        emoji: "💖",
-        color: "emerald"
-      });
-    }
-
-    if (selectedMonthId === "maio") {
-      tips.push({
-        title: "Entradas iniciadas!",
-        text: "Sua receita de R$ 8.480,00 foi ativada. Excelente! Sobrou uma bela quantia de saldo livre na conta.",
-        emoji: "💰",
-        color: "emerald"
-      });
-      tips.push({
-        title: "Duas parcelas totalmente quitadas! 🎉",
-        text: "Neste mês de Maio, as contas da 'Pia (18/18)' e do 'Teclado e mouse (4/4)' foram concluídas com sucesso. São R$ 54,00 a menos de gastos!",
-        emoji: "🎉",
-        color: "indigo"
-      });
-    }
-
-    if (selectedMonthId === "junho") {
-      tips.push({
-        title: "Aviso de contas variáveis (*)",
-        text: "A partir deste mês de Junho, Sabesp, CPFL, Nubank, Compras e iFood começam zerados (R$ 0,00). Lembre-se de olhar o valor nas faturas e digitar o valor real na tabela!",
-        emoji: "⚡",
-        color: "amber"
-      });
-      tips.push({
-        title: "Três contas parceladas a menos! 👏",
-        text: "Quitadas as parcelas do 'Clovis celular', 'Seguro Casa' e do 'Clovis nirv'. Seu custo caiu R$ 189,00 adicionais a partir deste mês!",
-        emoji: "💵",
-        color: "indigo"
-      });
-    }
-
-    if (selectedMonthId === "julho") {
-      tips.push({
-        title: "Mais duas parcelas encerradas!",
-        text: "Você encerrou os pagamentos da parcela da 'Gran' e da loja 'Havan'. Redução de mais R$ 161,00 nas despesas mensais!",
-        emoji: "✨",
-        color: "indigo"
-      });
-    }
-
-    if (selectedMonthId === "agosto") {
-      tips.push({
-        title: "Mais uma conta finalizada!",
-        text: "A parcela do 'Ventilador' de R$ 50,00 foi concluída no mês passado. Menos gastos fixos na sua conta!",
-        emoji: "❄️",
-        color: "indigo"
-      });
-    }
-
-    if (selectedMonthId === "outubro") {
-      tips.push({
-        title: "Grandes vitórias financeiras!",
-        text: "Foram quitadas as parcelas do 'Jogo de panelas' (R$ 51,00) e da 'Campainha' (R$ 22,00). Suas despesas estão cada vez menores!",
-        emoji: "🍳",
-        color: "indigo"
-      });
-    }
-
-    if (selectedMonthId === "dezembro") {
-      tips.push({
-        title: "Fim do ano e contas quitadas!",
-        text: "Último mês do ano de controle! As parcelas pesadas do 'PC' (R$ 540,00) e 'Microondas' (R$ 67,00) foram totalmente quitadas em Novembro, liberando R$ 607,00 no seu orçamento de Dezembro! Excelente controle financeiro!",
-        emoji: "🎄",
-        color: "emerald"
-      });
-    }
-
-    // Conselho padrão sobre o saldo
-    if (balanceValue > 0) {
-      tips.push({
-        title: "Saldo saudável!",
-        text: `Neste mês você está no azul! Estão sobrando R$ ${balanceValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. Excelente planejamento.`,
-        emoji: "✅",
-        color: "emerald"
-      });
-    } else if (balanceValue < 0 && selectedMonthId !== "abril") {
-      tips.push({
-        title: "Atenção ao saldo negativo",
-        text: `Seus gastos superaram seus proventos neste mês em R$ ${Math.abs(balanceValue).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. Verifique se é possível economizar em alguma conta variável.`,
-        emoji: "⚠️",
-        color: "rose"
-      });
-    }
-
-    return tips;
-  };
 
   const currentIndex = MONTHS_ORDER.indexOf(selectedMonthId);
 
   return (
     <TooltipProvider>
-      <div className={`min-h-screen bg-slate-50 font-sans antialiased text-slate-800 ${isLargeText ? "text-lg md:text-xl" : "text-base"}`}>
+      <div className={`min-h-screen bg-slate-950 font-sans antialiased text-slate-100 selection:bg-indigo-500 selection:text-white ${isLargeText ? "text-lg md:text-xl" : "text-base"}`}>
         
         {/* ==========================================================================
-           HEADER DO DASHBOARD
+           HEADER ULTRA-PREMIUM (DARK LUXURY DESIGN)
            ========================================================================== */}
-        <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-8">
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-blue-700 to-blue-500 text-white font-bold text-xl shadow-lg border-2 border-white">
+        <header className="sticky top-0 z-50 w-full border-b border-slate-800 bg-slate-950/85 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 md:px-8">
+            
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 text-white font-extrabold text-2xl shadow-xl shadow-indigo-500/10 border border-indigo-400/20">
                 SF
               </div>
               <div>
-                <h1 className={`font-bold tracking-tight text-blue-900 ${isLargeText ? "text-3xl" : "text-2xl"}`}>
-                  Painel do Sr. Flávio
+                <h1 className="font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent flex items-center gap-2 text-2xl md:text-3xl">
+                  Sr. Flávio <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full tracking-wider uppercase">Premium Plus</span>
                 </h1>
-                <p className={`text-slate-500 ${isLargeText ? "text-base" : "text-sm"}`}>
-                  Controle simples, grande e intuitivo do seu dinheiro
+                <p className="text-slate-400 font-medium text-sm md:text-base">
+                  Controle financeiro elegante de alta fidelidade
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 md:gap-4">
-              {/* Botão Acessibilidade de Texto */}
+            <div className="flex items-center gap-3">
+              {/* Botão de Acessibilidade Visual */}
               <Button
                 variant="outline"
-                size={isLargeText ? "lg" : "default"}
                 onClick={toggleTextSize}
-                className="flex items-center gap-2 border-blue-200 text-blue-800 bg-blue-50/50 hover:bg-blue-50 hover:text-blue-900 shadow-sm"
-                title="Aumentar ou diminuir o tamanho dos textos na tela"
+                className="flex items-center gap-2 border-slate-800 bg-slate-900/50 hover:bg-indigo-950/30 hover:border-indigo-500/30 text-slate-300 hover:text-indigo-400 shadow-sm transition-all rounded-xl h-12 px-4"
+                title="Aumentar tamanho das letras para melhor conforto"
               >
-                <span className="font-bold text-lg">A<span className="text-sm">A</span></span>
-                <span className="hidden sm:inline font-semibold">Texto Grande: {isLargeText ? "Sim" : "Não"}</span>
+                <Type className="h-5 w-5 text-indigo-400" />
+                <span className="hidden sm:inline font-bold">Texto {isLargeText ? "Padrão" : "Grande"}</span>
               </Button>
 
+              {/* Salvar Backup */}
               <Button
                 variant="outline"
-                size={isLargeText ? "lg" : "default"}
                 onClick={handleExport}
-                className="flex items-center gap-2 border-slate-200 text-slate-700 hover:bg-slate-100"
-                title="Exportar arquivo de backup com todas as edições"
+                className="flex items-center gap-2 border-slate-800 bg-slate-900/50 hover:bg-indigo-950/30 hover:border-indigo-500/30 text-slate-300 hover:text-indigo-400 shadow-sm transition-all rounded-xl h-12 px-4"
+                title="Salvar arquivo de backup com suas alterações"
               >
-                <Download className="h-5 w-5" />
-                <span className="hidden sm:inline font-semibold">Salvar Backup</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size={isLargeText ? "lg" : "default"}
-                onClick={handleReset}
-                className="flex items-center gap-2 border-red-200 text-red-700 bg-red-50 hover:bg-red-100"
-                title="Apagar edições e voltar aos valores originais"
-              >
-                <RotateCcw className="h-5 w-5" />
-                <span className="hidden sm:inline font-semibold">Limpar Tudo</span>
+                <Download className="h-5 w-5 text-indigo-400" />
+                <span className="hidden sm:inline font-bold">Backup</span>
               </Button>
             </div>
+
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+        <main className="mx-auto max-w-7xl px-6 py-10 md:px-8">
           
           {/* ==========================================================================
-             SELEÇÃO DOS MESES (BOTÕES GRANDES)
+             Navegador de Meses (Premium Pill Tabs)
              ========================================================================== */}
-          <section className="mb-8 flex flex-col items-center justify-between gap-4 rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:flex-row">
+          <section className="mb-10 flex flex-col items-center justify-between gap-4 rounded-2xl bg-slate-900/40 p-4 border border-slate-900 sm:flex-row backdrop-blur-md">
             <Button
-              variant="outline"
-              size="lg"
+              variant="ghost"
               disabled={currentIndex === 0}
               onClick={() => setSelectedMonthId(MONTHS_ORDER[currentIndex - 1])}
-              className="flex h-14 items-center gap-2 px-6 font-bold text-lg border-2"
+              className="flex h-12 items-center gap-2 px-5 font-extrabold text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl disabled:opacity-20 border border-transparent hover:border-slate-800 transition-all"
             >
-              <ChevronLeft className="h-6 w-6 stroke-[3]" />
-              Mês Anterior
+              <ChevronLeft className="h-5 w-5 stroke-[2.5]" />
+              Anterior
             </Button>
 
-            {/* Abas horizontais roláveis de meses */}
-            <div className="w-full overflow-x-auto py-2 px-1 scrollbar-thin scrollbar-thumb-slate-200">
-              <div className="flex justify-center gap-2 min-w-[700px]">
+            <div className="w-full overflow-x-auto py-1 scrollbar-none">
+              <div className="flex justify-center gap-2.5 min-w-[720px]">
                 {MONTHS_ORDER.map(mId => {
                   const isActive = selectedMonthId === mId;
-                  const isFuture = mId !== "abril" && mId !== "maio" && mId !== selectedMonthId;
                   return (
                     <button
                       key={mId}
                       onClick={() => setSelectedMonthId(mId)}
-                      className={`h-12 rounded-xl px-5 font-bold transition-all text-base border-2 capitalize
+                      className={`h-11 rounded-xl px-5 font-bold transition-all text-sm uppercase tracking-wider border
                         ${isActive 
-                          ? "bg-blue-800 border-blue-800 text-white shadow-md scale-105" 
-                          : isFuture 
-                            ? "bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200" 
-                            : "bg-blue-50/50 hover:bg-blue-50 text-blue-800 border-blue-100"
+                          ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-105" 
+                          : "bg-slate-900/50 hover:bg-slate-800 text-slate-400 border-slate-900 hover:text-slate-200"
                         }`}
                     >
                       {MONTH_NAMES[mId]}
@@ -628,110 +425,117 @@ export default function DashboardClient() {
             </div>
 
             <Button
-              variant="outline"
-              size="lg"
+              variant="ghost"
               disabled={currentIndex === MONTHS_ORDER.length - 1}
               onClick={() => setSelectedMonthId(MONTHS_ORDER[currentIndex + 1])}
-              className="flex h-14 items-center gap-2 px-6 font-bold text-lg border-2"
+              className="flex h-12 items-center gap-2 px-5 font-extrabold text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl disabled:opacity-20 border border-transparent hover:border-slate-800 transition-all"
             >
-              Próximo Mês
-              <ChevronRight className="h-6 w-6 stroke-[3]" />
+              Próximo
+              <ChevronRight className="h-5 w-5 stroke-[2.5]" />
             </Button>
           </section>
 
           {/* ==========================================================================
-             RESUMOS DO MÊS (CARTÕES GIGANTES)
+             Cartões de Métricas (Luxury Glassmorphism Cards)
              ========================================================================== */}
-          <section className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             
-            {/* Cartão de Entradas */}
-            <Card className="border-l-8 border-l-emerald-600 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="flex items-center gap-6 p-6">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-                  <TrendingUp className="h-9 w-9 stroke-[2.5]" />
+            {/* Card Proventos */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950 p-7 border border-slate-900 shadow-xl shadow-slate-950/50 group hover:border-emerald-500/20 transition-all duration-300">
+              <div className="absolute right-0 top-0 h-32 w-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300" />
+              <div className="flex items-center gap-5">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-md">
+                  <TrendingUp className="h-7 w-7 stroke-[2]" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-slate-500 font-medium">Entradas do Mês</p>
-                  <p className="text-xs text-slate-400">Clique para alterar a aposentadoria</p>
-                  <div className="relative mt-1 flex items-center">
-                    <span className="mr-1 text-slate-500 font-bold text-lg">R$</span>
+                  <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Entradas do Mês</span>
+                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5 block">Altere o valor dando um clique no campo:</span>
+                  <div className="relative mt-2.5 flex items-center">
+                    <span className="mr-1 text-slate-400 font-bold text-xl">R$</span>
                     <input
                       type="number"
                       value={proventosValue || ""}
                       onChange={(e) => handleProventoChange(Number(e.target.value))}
-                      className={`w-36 rounded-lg border-2 border-dashed border-emerald-300 bg-transparent px-2 py-1 font-bold text-emerald-800 focus:border-emerald-600 focus:bg-emerald-50 focus:outline-none transition-colors
+                      className={`w-40 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 px-3 py-1 font-black text-emerald-400 focus:border-emerald-500 focus:bg-emerald-950/20 focus:outline-none transition-all shadow-inner
                         ${isLargeText ? "text-3xl" : "text-2xl"}`}
                       step="0.01"
                       min="0"
-                      title="Clique aqui para digitar o valor de proventos deste mês"
+                      title="Clique aqui para alterar o valor de proventos deste mês"
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Cartão de Gastos */}
-            <Card className="border-l-8 border-l-rose-600 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="flex items-center gap-6 p-6">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-700">
-                  <TrendingDown className="h-9 w-9 stroke-[2.5]" />
+            {/* Card Gastos */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950 p-7 border border-slate-900 shadow-xl shadow-slate-950/50 group hover:border-rose-500/20 transition-all duration-300">
+              <div className="absolute right-0 top-0 h-32 w-32 bg-rose-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-rose-500/10 transition-all duration-300" />
+              <div className="flex items-center gap-5">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-md">
+                  <TrendingDown className="h-7 w-7 stroke-[2]" />
                 </div>
                 <div>
-                  <p className="text-slate-500 font-medium">Total de Gastos</p>
-                  <p className="text-xs text-slate-400">Total somado de todas as contas</p>
-                  <p className={`font-extrabold text-rose-700 mt-1 ${isLargeText ? "text-4xl" : "text-3xl"}`}>
+                  <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Total de Gastos</span>
+                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5 block">Soma líquida de todas as despesas:</span>
+                  <p className={`font-black text-rose-400 mt-2.5 tracking-tight ${isLargeText ? "text-4xl" : "text-3xl"}`}>
                     R$ {totalExpensesValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Cartão de Saldo Final */}
-            <Card className={`border-l-8 shadow-sm hover:shadow-md transition-all
+            {/* Card Saldo Final */}
+            <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-b p-7 border shadow-xl shadow-slate-950/50 transition-all duration-300 group
               ${balanceValue >= 0 
-                ? "border-l-blue-700 bg-blue-50/20" 
-                : "border-l-red-600 bg-red-50/20 animate-pulse border-red-300"
+                ? "from-slate-900/90 to-slate-950 border-slate-900 hover:border-indigo-500/20" 
+                : "from-red-950/20 to-slate-950 border-red-950 hover:border-red-500/30"
               }`}>
-              <CardContent className="flex items-center gap-6 p-6">
-                <div className={`flex h-16 w-16 items-center justify-center rounded-full 
-                  ${balanceValue >= 0 ? "bg-blue-50 text-blue-700" : "bg-red-100 text-red-700"}`}>
-                  <Wallet className="h-9 w-9 stroke-[2.5]" />
+              <div className={`absolute right-0 top-0 h-32 w-32 rounded-full blur-3xl pointer-events-none transition-all duration-300
+                ${balanceValue >= 0 ? "bg-indigo-500/5 group-hover:bg-indigo-500/10" : "bg-red-500/10 group-hover:bg-red-500/20"}`} 
+              />
+              <div className="flex items-center gap-5">
+                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border shadow-md
+                  ${balanceValue >= 0 
+                    ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" 
+                    : "bg-red-500/20 text-red-400 border-red-500/30"
+                  }`}>
+                  <Wallet className="h-7 w-7 stroke-[2]" />
                 </div>
                 <div>
-                  <p className="text-slate-500 font-medium">Sobrou na Conta</p>
-                  <p className="text-xs text-slate-400">Dinheiro livre pós despesas</p>
-                  <p className={`font-extrabold mt-1
-                    ${balanceValue >= 0 ? "text-blue-900" : "text-red-700"}
+                  <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Saldo Líquido</span>
+                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5 block">O que sobrou em conta:</span>
+                  <p className={`font-black mt-2.5 tracking-tight
+                    ${balanceValue >= 0 ? "text-indigo-400" : "text-red-500"}
                     ${isLargeText ? "text-4xl" : "text-3xl"}`}>
                     R$ {balanceValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
           </section>
 
           {/* ==========================================================================
-             GRADE PRINCIPAL (ESQUERDA: LISTA DE CONTAS, DIREITA: GRÁFICOS E DICAS)
+             GRADE DE LAYOUT (ESQUERDA: LISTA FINANCEIRA, DIREITA: GRÁFICO PREVISÃO)
              ========================================================================== */}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             
-            {/* Coluna Esquerda: Listagem de Despesas */}
+            {/* Esquerda: Listagem de Contas por Categoria */}
             <div className="lg:col-span-7 flex flex-col gap-6">
               
-              <Card className="shadow-sm">
-                <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
+              <Card className="shadow-2xl bg-slate-900/30 border-slate-900 backdrop-blur-md rounded-2xl overflow-hidden">
+                <CardHeader className="border-b border-slate-800 bg-slate-900/50 pb-5 px-6">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <CardTitle className={`font-extrabold text-blue-900 ${isLargeText ? "text-2xl" : "text-xl"}`}>
-                        Contas de <span className="capitalize text-blue-600 font-black">{selectedMonth.name}</span>
+                      <CardTitle className={`font-black text-slate-100 flex items-center gap-2 ${isLargeText ? "text-2xl" : "text-xl"}`}>
+                        Contas de <span className="capitalize text-indigo-400 font-black">{selectedMonth.name}</span>
                       </CardTitle>
-                      <CardDescription className={isLargeText ? "text-base" : "text-sm"}>
-                        Clique diretamente nos números azuis na coluna &quot;Valor&quot; para fazer alterações rápidas.
+                      <CardDescription className={`text-slate-400 font-medium ${isLargeText ? "text-base" : "text-sm"}`}>
+                        Dê um clique no valor em azul para atualizar. Contas de consumo com <span className="text-amber-400 font-black">*</span> começam zeradas a partir de Maio.
                       </CardDescription>
                     </div>
-                    <span className="rounded-full bg-blue-100 px-4 py-1 text-sm font-extrabold text-blue-800">
-                      {selectedMonth.expenses.length} itens cadastrados
+                    <span className="rounded-xl bg-indigo-500/10 border border-indigo-500/20 px-3.5 py-1 text-xs font-bold text-indigo-400 uppercase tracking-wider">
+                      {selectedMonth.expenses.length} Contas
                     </span>
                   </div>
                 </CardHeader>
@@ -741,35 +545,33 @@ export default function DashboardClient() {
                     
                     {/* 1. Contas de Consumo */}
                     {consumptionExpenses.length > 0 && (
-                      <div className="rounded-xl border border-amber-200 bg-amber-50/10 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Zap className="h-6 w-6 text-amber-700 stroke-[2.5]" />
-                          <h3 className="font-extrabold text-amber-900 text-lg">Contas de Consumo (Valores Variáveis)</h3>
+                      <div className="rounded-2xl border border-amber-950/30 bg-amber-950/5 p-5">
+                        <div className="flex items-center gap-3 mb-2 border-b border-amber-950/20 pb-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            <Zap className="h-5 w-5 stroke-[2]" />
+                          </div>
+                          <h3 className="font-black text-amber-300 text-lg">Contas de Consumo (Valores Variáveis)</h3>
                         </div>
-                        <p className="text-xs text-slate-500 mb-4">
-                          Em Abril e Maio os valores são fixos. De Junho em diante começam em R$ 0,00. Quando sua fatura chegar, preencha o valor correto.
-                        </p>
                         
                         <TableExpensesList 
                           expenses={consumptionExpenses} 
                           onValueChange={handleExpenseChange}
                           savedFeedbacks={savedFeedbacks}
                           isLargeText={isLargeText}
-                          isFuture={selectedMonthId !== "abril" && selectedMonthId !== "maio"}
+                          isFuture={selectedMonthId !== "abril"} // Começa a zerar em Maio (mês index >= 1)
                         />
                       </div>
                     )}
 
                     {/* 2. Contas Fixas */}
                     {fixedExpenses.length > 0 && (
-                      <div className="rounded-xl border border-blue-200 bg-blue-50/10 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Calendar className="h-6 w-6 text-blue-700 stroke-[2.5]" />
-                          <h3 className="font-extrabold text-blue-900 text-lg">Contas Fixas e Assinaturas (Mesmo Valor)</h3>
+                      <div className="rounded-2xl border border-indigo-950/30 bg-indigo-950/5 p-5">
+                        <div className="flex items-center gap-3 mb-2 border-b border-indigo-950/20 pb-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            <Calendar className="h-5 w-5 stroke-[2]" />
+                          </div>
+                          <h3 className="font-black text-indigo-300 text-lg">Despesas Fixas e Assinaturas</h3>
                         </div>
-                        <p className="text-xs text-slate-500 mb-4">
-                          Estes gastos se repetem com o mesmo valor todos os meses automaticamente.
-                        </p>
                         
                         <TableExpensesList 
                           expenses={fixedExpenses} 
@@ -782,14 +584,13 @@ export default function DashboardClient() {
 
                     {/* 3. Parcelamentos */}
                     {installmentExpenses.length > 0 && (
-                      <div className="rounded-xl border border-purple-200 bg-purple-50/10 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CreditCard className="h-6 w-6 text-purple-700 stroke-[2.5]" />
-                          <h3 className="font-extrabold text-purple-900 text-lg">Compras Parceladas (Evolução das Parcelas)</h3>
+                      <div className="rounded-2xl border border-purple-950/30 bg-purple-950/5 p-5">
+                        <div className="flex items-center gap-3 mb-2 border-b border-purple-950/20 pb-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            <CreditCard className="h-5 w-5 stroke-[2]" />
+                          </div>
+                          <h3 className="font-black text-purple-300 text-lg">Compras Parceladas Ativas</h3>
                         </div>
-                        <p className="text-xs text-slate-500 mb-4">
-                          O sistema acompanha as parcelas automaticamente. Quando a parcela chega ao final, ela some nos meses futuros e economiza seu orçamento!
-                        </p>
                         
                         <TableExpensesList 
                           expenses={installmentExpenses} 
@@ -802,14 +603,13 @@ export default function DashboardClient() {
 
                     {/* 4. Ajustes/Deduções */}
                     {adjustments.length > 0 && (
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/10 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Percent className="h-6 w-6 text-emerald-700 stroke-[2.5]" />
-                          <h3 className="font-extrabold text-emerald-900 text-lg">Descontos, Ajudas e Ajustes especiais</h3>
+                      <div className="rounded-2xl border border-emerald-950/30 bg-emerald-950/5 p-5">
+                        <div className="flex items-center gap-3 mb-2 border-b border-emerald-950/20 pb-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <Percent className="h-5 w-5 stroke-[2]" />
+                          </div>
+                          <h3 className="font-black text-emerald-300 text-lg">Descontos e Reembolsos</h3>
                         </div>
-                        <p className="text-xs text-slate-500 mb-4">
-                          Estes valores reduzem a sua despesa total (são subtraídos dos gastos). Ex: R$ 210,00 de reembolso do seu filho.
-                        </p>
                         
                         <TableExpensesList 
                           expenses={adjustments} 
@@ -826,36 +626,47 @@ export default function DashboardClient() {
               
             </div>
 
-            {/* Coluna Direita: Gráficos, Dicas e Avisos */}
+            {/* Direita: Gráfico de Evolução Futura */}
             <div className="lg:col-span-5 flex flex-col gap-6">
               
-              {/* Gráfico de Barras da Evolução */}
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle className={`font-extrabold text-blue-900 ${isLargeText ? "text-2xl" : "text-xl"}`}>
+              <Card className="shadow-2xl bg-slate-900/30 border-slate-900 backdrop-blur-md rounded-2xl overflow-hidden p-6">
+                <div className="mb-6">
+                  <h3 className={`font-black text-slate-100 flex items-center gap-2 ${isLargeText ? "text-2xl" : "text-xl"}`}>
+                    <Sparkles className="h-6 w-6 text-indigo-400" />
                     Previsão de Gastos Futuros
-                  </CardTitle>
-                  <CardDescription className={isLargeText ? "text-base" : "text-sm"}>
-                    Gráfico que mostra como seus gastos diminuem ao longo dos meses conforme as parcelas vão terminando.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="h-80 pb-4">
+                  </h3>
+                  <p className="text-slate-400 font-medium text-xs mt-1">
+                    Visualize o declínio progressivo nos totais de despesas à medida que as parcelas vão terminando até Dezembro.
+                  </p>
+                </div>
+                
+                <div className="h-80 w-full bg-slate-950/40 rounded-xl p-4 border border-slate-900">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={chartData}
                       margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <defs>
+                        <linearGradient id="bar-normal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#818cf8" stopOpacity={0.7} />
+                          <stop offset="100%" stopColor="#312e81" stopOpacity={0.7} />
+                        </linearGradient>
+                        <linearGradient id="bar-selected" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#6366f1" stopOpacity={1} />
+                          <stop offset="100%" stopColor="#1e1b4b" stopOpacity={1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
                       <XAxis 
                         dataKey="name" 
-                        stroke="#64748b" 
+                        stroke="#94a3b8" 
                         fontSize={13} 
                         fontWeight={700}
                         axisLine={false} 
                         tickLine={false} 
                       />
                       <YAxis 
-                        stroke="#64748b" 
+                        stroke="#94a3b8" 
                         fontSize={12} 
                         fontWeight={600}
                         axisLine={false} 
@@ -866,17 +677,17 @@ export default function DashboardClient() {
                         content={<CustomChartTooltip isLargeText={isLargeText} />} 
                       />
                       <Bar 
-                        dataKey="Total Gastos" 
+                        dataKey="Gastos" 
                         radius={[8, 8, 0, 0]} 
-                        maxBarSize={45}
+                        maxBarSize={40}
                       >
                         {chartData.map((entry, index) => {
                           const isActive = entry.id === selectedMonthId;
                           return (
                             <Cell 
                               key={`cell-${index}`} 
-                              fill={isActive ? "#1d4ed8" : "#93c5fd"} 
-                              className="transition-all cursor-pointer"
+                              fill={isActive ? "url(#bar-selected)" : "url(#bar-normal)"}
+                              className="transition-all cursor-pointer hover:opacity-90"
                               onClick={() => setSelectedMonthId(entry.id)}
                             />
                           );
@@ -884,86 +695,18 @@ export default function DashboardClient() {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                </CardContent>
-                <div className="flex justify-center gap-6 pb-6 text-sm text-slate-500 font-bold">
+                </div>
+                
+                <div className="flex justify-center gap-6 mt-6 text-sm text-slate-400 font-bold border-t border-slate-900 pt-5">
                   <div className="flex items-center gap-2">
-                    <span className="inline-block h-4 w-4 rounded bg-blue-300"></span>
-                    Outros Meses
+                    <span className="inline-block h-3.5 w-3.5 rounded bg-indigo-500/60 border border-indigo-400/20"></span>
+                    Demais Meses
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="inline-block h-4 w-4 rounded bg-blue-700"></span>
+                    <span className="inline-block h-3.5 w-3.5 rounded bg-indigo-600 shadow-md shadow-indigo-500/20"></span>
                     Mês Selecionado ({MONTH_NAMES[selectedMonthId]})
                   </div>
                 </div>
-              </Card>
-
-              {/* Dicas e Conselhos Financeiros do Sr. Flávio */}
-              <Card className="border-t-4 border-t-amber-500 shadow-sm">
-                <CardHeader className="flex flex-row items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
-                    <Lightbulb className="h-6 w-6 stroke-[2]" />
-                  </div>
-                  <div>
-                    <CardTitle className={`font-extrabold text-slate-900 ${isLargeText ? "text-2xl" : "text-xl"}`}>
-                      Conselhos do seu Painel
-                    </CardTitle>
-                    <CardDescription className={isLargeText ? "text-base" : "text-sm"}>
-                      Ideias inteligentes baseadas nos gastos de {selectedMonth.name}
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="flex flex-col gap-4">
-                  {getFinancialTips().map((tip, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`flex items-start gap-4 rounded-xl border p-4
-                        ${tip.color === "emerald" ? "bg-emerald-50/50 border-emerald-200" : ""}
-                        ${tip.color === "amber" ? "bg-amber-50/50 border-amber-200" : ""}
-                        ${tip.color === "indigo" ? "bg-indigo-50/50 border-indigo-200" : ""}
-                        ${tip.color === "rose" ? "bg-rose-50/50 border-rose-200" : ""}
-                      `}
-                    >
-                      <span className="text-3xl" role="img" aria-hidden="true">{tip.emoji}</span>
-                      <div className="flex-1">
-                        <strong className={`block text-slate-900 ${isLargeText ? "text-lg" : "text-base"}`}>
-                          {tip.title}
-                        </strong>
-                        <p className={`text-slate-600 mt-0.5 leading-relaxed ${isLargeText ? "text-base" : "text-sm"}`}>
-                          {tip.text}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Instruções de Uso Simples para o Idoso */}
-              <Card className="bg-slate-100/50 border-slate-200 border shadow-sm">
-                <CardContent className="p-6 flex flex-col gap-4">
-                  <h3 className="font-extrabold text-slate-900 flex items-center gap-2 text-lg">
-                    <Info className="h-5 w-5 text-blue-800" />
-                    Como usar este Painel?
-                  </h3>
-                  <ul className="list-none flex flex-col gap-3 pl-0 text-slate-700">
-                    <li className="relative pl-6 text-sm">
-                      <span className="absolute left-0 top-1 h-3.5 w-3.5 text-blue-800 font-black">1.</span>
-                      <strong>Editar valores:</strong> Dê um clique duplo ou simples no valor de qualquer conta na tabela. Um retângulo surgirá para você digitar. O painel salva tudo sozinho!
-                    </li>
-                    <li className="relative pl-6 text-sm">
-                      <span className="absolute left-0 top-1 h-3.5 w-3.5 text-blue-800 font-black">2.</span>
-                      <strong>Mudar os meses:</strong> Utilize os botões gigantes <strong>&quot;Mês Anterior&quot;</strong> e <strong>&quot;Próximo Mês&quot;</strong> no topo.
-                    </li>
-                    <li className="relative pl-6 text-sm">
-                      <span className="absolute left-0 top-1 h-3.5 w-3.5 text-blue-800 font-black">3.</span>
-                      <strong>Contas variáveis (*):</strong> A partir de Junho elas começam em zero. Olhe o valor da conta física que chega em sua casa e atualize aqui!
-                    </li>
-                    <li className="relative pl-6 text-sm">
-                      <span className="absolute left-0 top-1 h-3.5 w-3.5 text-blue-800 font-black">4.</span>
-                      <strong>Salvar ou Apagar:</strong> Use o botão <strong>&quot;Salvar Backup&quot;</strong> no canto superior direito para guardar as informações. O botão <strong>&quot;Limpar Tudo&quot;</strong> restaura os valores originais de fábrica do painel.
-                    </li>
-                  </ul>
-                </CardContent>
               </Card>
 
             </div>
@@ -972,8 +715,8 @@ export default function DashboardClient() {
 
         </main>
         
-        <footer className="mt-16 border-t border-slate-200 bg-white py-8 text-center text-slate-500 text-sm font-medium">
-          <p>© 2026 Controle Financeiro Familiar do Sr. Flávio. Desenvolvido com carinho e acessibilidade máxima.</p>
+        <footer className="mt-20 border-t border-slate-900 bg-slate-950 py-10 text-center text-slate-500 text-sm font-semibold tracking-wide">
+          <p>© 2026 Controle Financeiro Premium do Sr. Flávio. Desenvolvido com sofisticação e acessibilidade máxima.</p>
         </footer>
 
       </div>
@@ -982,7 +725,7 @@ export default function DashboardClient() {
 }
 
 // ==========================================================================
-// 2. COMPONENTE AUXILIAR: TABELA DE DESPESAS
+// 4. COMPONENTE AUXILIAR: TABELA FINANCEIRA DE DESPESAS (PREMIUM DESIGN)
 // ==========================================================================
 
 interface TableExpensesListProps {
@@ -1020,10 +763,10 @@ function TableExpensesList({
     <div className="overflow-x-auto w-full">
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-slate-200">
-            <TableHead className="w-1/2 font-extrabold text-slate-700 text-sm">Nome da Conta</TableHead>
-            <TableHead className="w-1/4 font-extrabold text-slate-700 text-sm">Situação</TableHead>
-            <TableHead className="w-1/4 text-right font-extrabold text-slate-700 text-sm">Valor</TableHead>
+          <TableRow className="border-b border-slate-800 hover:bg-transparent">
+            <TableHead className="w-1/2 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
+            <TableHead className="w-1/4 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Status</TableHead>
+            <TableHead className="w-1/4 text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1031,26 +774,25 @@ function TableExpensesList({
             const isEditing = editingId === exp.id;
             const isSaved = savedFeedbacks[exp.id];
             
-            // Definição da badge de status
             let badgeComponent = null;
             if (exp.type === "consumption") {
               if (isFuture && exp.value === 0) {
                 badgeComponent = (
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800 border border-amber-300 animate-pulse">
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-400 border border-amber-500/20 animate-pulse">
                     Preencher! ⚠️
                   </span>
                 );
               } else {
                 badgeComponent = (
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 border border-amber-200">
-                    Consumo Variável
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/5 px-2.5 py-1 text-xs font-bold text-amber-500/80 border border-amber-500/10">
+                    Consumo
                   </span>
                 );
               }
             } else if (exp.type === "fixed") {
               badgeComponent = (
-                <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-200">
-                  Fixo Mensal
+                <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/5 px-2.5 py-1 text-xs font-bold text-indigo-400/80 border border-indigo-500/10">
+                  Fixo
                 </span>
               );
             } else if (exp.type === "installment" && exp.installments) {
@@ -1060,18 +802,18 @@ function TableExpensesList({
               
               badgeComponent = (
                 <div className="flex flex-col gap-1 w-full max-w-[120px]">
-                  <span className="inline-flex items-center gap-1 rounded bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700 border border-purple-200">
-                    Parc. {current} de {total}
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/5 px-2.5 py-1 text-xs font-bold text-purple-400/80 border border-purple-500/10">
+                    Parc. {current}/{total}
                   </span>
-                  <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-600 rounded-full transition-all" style={{ width: `${percent}%` }} />
+                  <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                    <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all" style={{ width: `${percent}%` }} />
                   </div>
                 </div>
               );
             } else if (exp.type === "adjustment") {
               badgeComponent = (
-                <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
-                  Desconto (-)
+                <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+                  Reembolso (-)
                 </span>
               );
             }
@@ -1079,13 +821,13 @@ function TableExpensesList({
             return (
               <TableRow 
                 key={exp.id} 
-                className={`border-b border-slate-100 hover:bg-slate-50 transition-colors
-                  ${isSaved ? "bg-emerald-50/70" : ""}
+                className={`border-b border-slate-900/60 hover:bg-slate-900/20 transition-colors
+                  ${isSaved ? "bg-emerald-950/20" : ""}
                 `}
               >
                 {/* Nome */}
-                <TableCell className={`py-4 font-bold text-slate-800 ${isLargeText ? "text-lg" : "text-base"}`}>
-                  <span className="flex items-center gap-2">
+                <TableCell className={`py-4 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"}`}>
+                  <span className="flex items-center gap-1.5">
                     {exp.name}
                     {exp.isAsterisk && (
                       <span className="text-amber-500 font-extrabold" title="Conta de valor variável">*</span>
@@ -1093,12 +835,12 @@ function TableExpensesList({
                   </span>
                 </TableCell>
                 
-                {/* Situação / Badge */}
+                {/* Badge Status */}
                 <TableCell className="py-4">
                   {badgeComponent}
                 </TableCell>
                 
-                {/* Valor */}
+                {/* Valor Editável */}
                 <TableCell className="py-4 text-right">
                   {isEditing ? (
                     <div className="flex items-center justify-end gap-1.5">
@@ -1112,7 +854,7 @@ function TableExpensesList({
                           if (e.key === "Enter") handleSaveEdit(exp.id);
                           if (e.key === "Escape") setEditingId(null);
                         }}
-                        className="w-24 text-right font-extrabold text-blue-900 border-2 border-blue-600 bg-white"
+                        className="w-24 text-right font-extrabold text-indigo-400 border-2 border-indigo-500 bg-slate-950"
                         autoFocus
                         step="0.01"
                       />
@@ -1120,19 +862,19 @@ function TableExpensesList({
                   ) : (
                     <div 
                       onClick={() => handleStartEdit(exp)}
-                      className={`inline-flex items-center gap-2 cursor-pointer rounded-lg px-3 py-1.5 border-2 border-transparent hover:border-blue-300 hover:bg-blue-50/50 transition-all font-black text-right text-blue-800
+                      className={`inline-flex items-center gap-2 cursor-pointer rounded-xl px-3.5 py-2 border border-slate-900/40 bg-slate-900/30 hover:border-indigo-500/30 hover:bg-indigo-950/20 hover:text-indigo-400 transition-all font-black text-right text-indigo-300
                         ${isFuture && exp.value === 0 && exp.type === "consumption" 
-                          ? "border-dashed border-amber-300 bg-amber-50 text-amber-800" 
+                          ? "border-dashed border-amber-500/40 bg-amber-500/5 text-amber-400 hover:border-amber-500/60 hover:bg-amber-950/20" 
                           : ""
                         }
                         ${isLargeText ? "text-xl" : "text-lg"}`}
-                      title="Clique duas vezes para editar o valor"
+                      title="Clique para alterar o valor da conta"
                     >
                       <span>
                         R$ {exp.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </span>
                       {isSaved && (
-                        <CheckCircle className="h-4 w-4 text-emerald-600 animate-bounce stroke-[3]" />
+                        <CheckCircle className="h-4.5 w-4.5 text-emerald-500 animate-bounce stroke-[2.5]" />
                       )}
                     </div>
                   )}
@@ -1147,7 +889,7 @@ function TableExpensesList({
 }
 
 // ==========================================================================
-// 3. COMPONENTE AUXILIAR: CUSTOM CHART TOOLTIP
+// 5. CUSTOM CHART TOOLTIP
 // ==========================================================================
 interface CustomChartTooltipProps {
   active?: boolean;
@@ -1163,7 +905,7 @@ interface CustomChartTooltipProps {
   isLargeText: boolean;
 }
 
-function CustomChartTooltip({ active, payload, isLargeText }: CustomChartTooltipProps) {
+function CustomChartTooltip({ active, payload }: CustomChartTooltipProps) {
   if (active && payload && payload.length) {
     const currentMonthData = payload[0].payload;
     const expense = payload[0].value;
@@ -1172,16 +914,16 @@ function CustomChartTooltip({ active, payload, isLargeText }: CustomChartTooltip
     const name = currentMonthData.name;
 
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-lg flex flex-col gap-1.5 text-sm">
-        <h4 className="font-extrabold text-blue-900 text-base border-b border-slate-100 pb-1 capitalize">{name} 2026</h4>
-        <p className="font-semibold text-slate-500">
-          Receitas: <span className="text-emerald-700 font-extrabold">R$ {income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/95 backdrop-blur-md p-4.5 shadow-2xl flex flex-col gap-1.5 text-sm">
+        <h4 className="font-black text-slate-100 text-base border-b border-slate-900 pb-1.5 capitalize">{name} 2026</h4>
+        <p className="font-semibold text-slate-400">
+          Receitas: <span className="text-emerald-400 font-extrabold">R$ {income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
         </p>
-        <p className="font-semibold text-slate-500">
-          Gastos: <span className="text-rose-700 font-extrabold">R$ {expense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+        <p className="font-semibold text-slate-400">
+          Gastos: <span className="text-rose-400 font-extrabold">R$ {expense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
         </p>
-        <p className={`font-extrabold border-t border-slate-100 pt-1 mt-1
-          ${balance >= 0 ? "text-blue-800" : "text-red-700"}`}>
+        <p className={`font-black border-t border-slate-900 pt-1.5 mt-1.5
+          ${balance >= 0 ? "text-indigo-400" : "text-red-500"}`}>
           Saldo: R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
         </p>
       </div>

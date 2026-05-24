@@ -265,7 +265,7 @@ export default function DashboardClient() {
 
   useEffect(() => {
     // Nova chave V10 para recarregar com Dente pago por padrão
-    const stored = localStorage.getItem("dashflavio_data_v10");
+    const stored = localStorage.getItem("dashflavio_data_v11");
     if (stored) {
       try {
         setData(JSON.parse(stored));
@@ -275,7 +275,7 @@ export default function DashboardClient() {
     } else {
       const initial = generateInitialDashboardData();
       setData(initial);
-      localStorage.setItem("dashflavio_data_v10", JSON.stringify(initial));
+      localStorage.setItem("dashflavio_data_v11", JSON.stringify(initial));
     }
 
     const storedTextSize = localStorage.getItem("dashflavio_large_text");
@@ -352,7 +352,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
   };
 
   // Alterar data de pagamento manualmente
@@ -370,7 +370,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
   };
 
   // Alterar Provento do Mês
@@ -382,7 +382,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
   };
 
   // Alterar valor da despesa na tabela
@@ -401,7 +401,7 @@ export default function DashboardClient() {
     });
     
     setData(updated);
-    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
 
     setSavedFeedbacks(prev => ({ ...prev, [expenseId]: true }));
     setTimeout(() => {
@@ -419,7 +419,7 @@ export default function DashboardClient() {
         return m;
       });
       setData(updated);
-      localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
+      localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
     }
   };
 
@@ -459,7 +459,7 @@ export default function DashboardClient() {
     });
 
     setData(updated);
-    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
 
     setNewAccName("");
     setNewAccValue("");
@@ -504,7 +504,7 @@ export default function DashboardClient() {
     });
 
     setData(updated);
-    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v11", JSON.stringify(updated));
 
     setNewCreditName("");
     setNewCreditValue("");
@@ -1170,12 +1170,12 @@ function TableExpensesList({
                 {/* 1. Nome + Data de Pagamento Integrada logo abaixo */}
                 <TableCell className={`py-4 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"}`}>
                   <div className="flex flex-col">
-                    <span className={exp.paid ? "line-through text-slate-500 font-medium" : ""}>
+                    <span className={exp.paid && exp.type !== "adjustment" ? "line-through text-slate-500 font-medium" : ""}>
                       {cleanName(exp.name)}
                     </span>
                     
                     {/* DATA DE PAGAMENTO INTEGRADA: Espaço horizontal poupado e layout 100% limpo! */}
-                    {exp.paid && (
+                    {exp.paid && exp.type !== "adjustment" && (
                       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400 font-semibold animate-fadeIn">
                         <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-wide uppercase">Pago</span>
                         <span>no dia:</span>
@@ -1225,7 +1225,8 @@ function TableExpensesList({
                           ? "border-dashed border-amber-500/40 bg-amber-500/5 text-amber-400 hover:border-amber-500/60 hover:bg-amber-950/20" 
                           : ""
                         }
-                        ${exp.paid ? "text-slate-500 line-through font-bold bg-transparent border-transparent" : ""}
+                        ${exp.type === "adjustment" ? "text-emerald-400 bg-emerald-500/5 border-emerald-500/20 font-black" : ""}
+                        ${exp.paid && exp.type !== "adjustment" ? "text-slate-500 line-through font-bold bg-transparent border-transparent" : ""}
                         ${isLargeText ? "text-xl" : "text-lg"}`}
                       title="Clique para editar o valor"
                     >
@@ -1239,19 +1240,25 @@ function TableExpensesList({
                   )}
                 </TableCell>
 
-                {/* 4. Checkbox Pago */}
+                {/* 4. Checkbox Pago / Badge de Crédito */}
                 <TableCell className="py-4 text-center">
-                  <button
-                    onClick={() => onTogglePaid(exp.id)}
-                    className={`h-7 w-7 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none cursor-pointer mx-auto
-                      ${exp.paid 
-                        ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20" 
-                        : "border-slate-700 bg-background hover:border-slate-500"
-                      }`}
-                    title={exp.paid ? "Marcar como pendente" : "Marcar como pago"}
-                  >
-                    {exp.paid && <Check className="h-4 w-4 stroke-[3]" />}
-                  </button>
+                  {exp.type !== "adjustment" ? (
+                    <button
+                      onClick={() => onTogglePaid(exp.id)}
+                      className={`h-7 w-7 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none cursor-pointer mx-auto
+                        ${exp.paid 
+                          ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20" 
+                          : "border-slate-700 bg-background hover:border-slate-500"
+                        }`}
+                      title={exp.paid ? "Marcar como pendente" : "Marcar como pago"}
+                    >
+                      {exp.paid && <Check className="h-4 w-4 stroke-[3]" />}
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-black text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
+                      Crédito
+                    </span>
+                  )}
                 </TableCell>
 
                 {/* 5. Excluir Conta por Padrão */}

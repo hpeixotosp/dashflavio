@@ -622,17 +622,17 @@ export default function DashboardClient() {
               {/* Adicionar Conta Não Prevista */}
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger
-                  className="flex h-11 items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white shadow-lg font-black px-3.5 cursor-pointer transition-all inline-flex justify-center border border-red-500/20 hover:scale-105 text-xs md:text-sm"
+                  className="flex h-11 items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-lg font-black px-3.5 cursor-pointer transition-all inline-flex justify-center border border-rose-500/20 hover:scale-105 text-xs md:text-sm"
                   title="Adicionar uma conta não programada na tabela"
                 >
                   <Plus className="h-4.5 w-4.5 stroke-[2.5]" />
-                  <span>+ Conta</span>
+                  <span>Conta</span>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[440px] rounded-2xl bg-card border border-border p-6 shadow-2xl text-foreground">
                   <DialogHeader>
                     <DialogTitle className="text-white font-extrabold text-xl">Adicionar Gasto Não Previsto</DialogTitle>
                     <DialogDescription className="text-muted-foreground text-sm">
-                      Insira os detalhes abaixo para adicionar este gasto na tabela de <strong className="capitalize text-red-400 font-extrabold">{selectedMonth.name}</strong>.
+                      Insira os detalhes abaixo para adicionar este gasto na tabela de <strong className="capitalize text-rose-500 font-extrabold">{selectedMonth.name}</strong>.
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleAddAccount} className="flex flex-col gap-4 mt-4 text-foreground">
@@ -643,7 +643,7 @@ export default function DashboardClient() {
                         value={newAccName}
                         onChange={(e) => setNewAccName(e.target.value)}
                         placeholder="Ex: Sabesp, CPFL, Mercado"
-                        className="h-12 border-border bg-background focus:border-red-500 rounded-xl"
+                        className="h-12 border-border bg-background focus:border-rose-500 rounded-xl"
                         required
                       />
                     </div>
@@ -656,7 +656,7 @@ export default function DashboardClient() {
                         placeholder="0,00"
                         step="0.01"
                         min="0"
-                        className="h-12 border-border bg-background focus:border-red-500 rounded-xl"
+                        className="h-12 border-border bg-background focus:border-rose-500 rounded-xl"
                         required
                       />
                     </div>
@@ -665,7 +665,7 @@ export default function DashboardClient() {
                       <select
                         value={newAccType}
                         onChange={(e) => setNewAccType(e.target.value as any)}
-                        className="h-12 w-full rounded-xl border border-border bg-background px-3 font-semibold text-foreground focus:border-red-500 focus:outline-none"
+                        className="h-12 w-full rounded-xl border border-border bg-background px-3 font-semibold text-foreground focus:border-rose-500 focus:outline-none"
                       >
                         <option value="fixed">Gasto Fixo (recorrente)</option>
                         <option value="consumption">Gasto de Consumo (variável)</option>
@@ -681,7 +681,7 @@ export default function DashboardClient() {
                           value={newAccInstallments}
                           onChange={(e) => setNewAccInstallments(e.target.value)}
                           min="1"
-                          className="h-12 border-border bg-background focus:border-red-500 rounded-xl"
+                          className="h-12 border-border bg-background focus:border-rose-500 rounded-xl"
                           required
                         />
                       </div>
@@ -689,7 +689,7 @@ export default function DashboardClient() {
 
                     <Button 
                       type="submit" 
-                      className="h-12 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-md mt-2 w-full"
+                      className="h-12 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl shadow-md mt-2 w-full"
                     >
                       Confirmar e Adicionar
                     </Button>
@@ -704,7 +704,7 @@ export default function DashboardClient() {
                   title="Adicionar uma receita ou reembolso na tabela"
                 >
                   <Plus className="h-4.5 w-4.5 stroke-[2.5]" />
-                  <span>+ Receita</span>
+                  <span>Receita</span>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[440px] rounded-2xl bg-card border border-border p-6 shadow-2xl text-foreground">
                   <DialogHeader>
@@ -773,28 +773,6 @@ export default function DashboardClient() {
                   </form>
                 </DialogContent>
               </Dialog>
-
-              {/* Botão de Acessibilidade */}
-              <Button
-                variant="outline"
-                onClick={toggleTextSize}
-                className="flex h-11 items-center gap-1.5 border-border bg-card hover:bg-muted hover:border-slate-500/30 text-foreground shadow-sm transition-all rounded-xl px-3 cursor-pointer text-xs md:text-sm font-black"
-                title="Aumentar tamanho das letras para melhor conforto"
-              >
-                <Type className="h-4.5 w-4.5 text-slate-300" />
-                <span>Letra</span>
-              </Button>
-
-              {/* Salvar Backup */}
-              <Button
-                variant="outline"
-                onClick={handleExport}
-                className="flex h-11 items-center gap-1.5 border-border bg-card hover:bg-muted hover:border-slate-500/30 text-foreground shadow-sm transition-all rounded-xl px-3 cursor-pointer text-xs md:text-sm font-black"
-                title="Salvar arquivo de backup localmente"
-              >
-                <Download className="h-4.5 w-4.5 text-slate-300" />
-                <span>Backup</span>
-              </Button>
             </div>
 
           </div>
@@ -888,13 +866,13 @@ export default function DashboardClient() {
             {/* Card Gastos (Soma de todas as contas por padrão, não precisa clicar em nada!) */}
             <Card className="shadow-lg border-border bg-card group hover:border-rose-500/30 transition-all duration-300">
               <CardContent className="flex items-center gap-5 p-7">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-md">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20 shadow-md">
                   <TrendingDown className="h-7 w-7 stroke-[2.5]" />
                 </div>
                 <div>
                   <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider block">Total de Gastos (Saídas)</span>
                   <span className="text-[10px] text-muted-foreground/60 font-semibold mt-0.5 block">Soma de todas as despesas listadas:</span>
-                  <p className={`font-black text-rose-400 mt-2.5 tracking-tight ${isLargeText ? "text-4xl" : "text-3xl"}`}>
+                  <p className={`font-black text-rose-500 mt-2.5 tracking-tight ${isLargeText ? "text-4xl" : "text-3xl"}`}>
                     R$ {totalExpensesValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
@@ -905,13 +883,13 @@ export default function DashboardClient() {
             <Card className={`shadow-lg border-border transition-all duration-300 group
               ${balanceAvailable >= 0 
                 ? "bg-card hover:border-emerald-500/30" 
-                : "bg-red-950/10 border-red-900/30 hover:border-red-500/40"
+                : "bg-rose-950/10 border-rose-900/30 hover:border-rose-500/40"
               }`}>
               <CardContent className="flex items-center gap-5 p-7">
                 <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border shadow-md
                   ${balanceAvailable >= 0 
                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
-                    : "bg-red-500/20 text-red-400 border-red-500/30"
+                    : "bg-rose-500/20 text-rose-500 border-rose-500/30"
                   }`}>
                   <Wallet className="h-7 w-7 stroke-[2.5]" />
                 </div>
@@ -919,7 +897,7 @@ export default function DashboardClient() {
                   <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider block">Saldo Disponível</span>
                   <span className="text-[10px] text-muted-foreground/60 font-semibold mt-0.5 block">Dinheiro líquido restante:</span>
                   <p className={`font-black mt-2.5 tracking-tight
-                    ${balanceAvailable >= 0 ? "text-emerald-400" : "text-red-500"}
+                    ${balanceAvailable >= 0 ? "text-emerald-400" : "text-rose-500"}
                     ${isLargeText ? "text-4xl" : "text-3xl"}`}>
                     R$ {balanceAvailable.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
@@ -942,7 +920,7 @@ export default function DashboardClient() {
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                       <CardTitle className={`font-black text-slate-100 flex items-center gap-2 ${isLargeText ? "text-2xl" : "text-xl"}`}>
-                        Contas de <span className="capitalize text-red-400 font-black">{selectedMonth.name}</span>
+                        Contas de <span className="capitalize text-rose-500 font-black">{selectedMonth.name}</span>
                       </CardTitle>
                       <CardDescription className={`text-muted-foreground font-medium ${isLargeText ? "text-base" : "text-sm"}`}>
                         Dê um clique no valor colorido (vermelho para contas e verde para reembolsos) para atualizá-lo.
@@ -957,7 +935,7 @@ export default function DashboardClient() {
                     {/* Grupo Único e Limpo de Contas */}
                     <div className="rounded-2xl border border-border bg-background/50 p-5">
                       <div className="flex items-center gap-3 mb-4 border-b border-border pb-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10 text-red-400 border border-red-500/20">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20">
                           <Zap className="h-5 w-5 stroke-[2.5]" />
                         </div>
                         <h3 className="font-black text-slate-200 text-lg">Contas</h3>
@@ -1264,7 +1242,7 @@ function TableExpensesList({
                           if (e.key === "Escape") setEditingId(null);
                         }}
                         className={`w-28 text-right font-extrabold bg-background h-9 rounded-lg px-2 border-2
-                          ${exp.type === "adjustment" ? "text-emerald-400 border-emerald-500/40 focus:border-emerald-500" : "text-red-400 border-red-500/40 focus:border-red-500"}`}
+                          ${exp.type === "adjustment" ? "text-emerald-400 border-emerald-500/40 focus:border-emerald-500" : "text-rose-500 border-rose-500/40 focus:border-rose-500"}`}
                         autoFocus
                         step="0.01"
                       />
@@ -1278,7 +1256,7 @@ function TableExpensesList({
                           : ""
                         }
                         ${exp.type !== "adjustment" && !exp.paid
-                          ? "text-red-400 border-red-500/20 bg-red-500/5 hover:border-red-500/40 font-bold" 
+                          ? "text-rose-500 border-rose-500/20 bg-rose-500/5 hover:border-rose-500/40 font-bold" 
                           : ""
                         }
                         ${exp.type !== "adjustment" && exp.paid
@@ -1327,7 +1305,7 @@ function TableExpensesList({
                 <TableCell className="py-4 text-center">
                   <button
                     onClick={() => onDelete(exp.id)}
-                    className="text-slate-500 hover:text-red-500 p-2 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer"
+                    className="text-slate-500 hover:text-rose-500 p-2 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer"
                     title="Excluir esta conta da lista deste mês"
                   >
                     <Trash2 className="h-4.5 w-4.5" />
@@ -1374,7 +1352,7 @@ function CustomChartTooltip({ active, payload }: CustomChartTooltipProps) {
           Receitas: <span className="text-emerald-400 font-extrabold">R$ {income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
         </p>
         <p className="font-semibold text-muted-foreground">
-          Total Gastos: <span className="text-rose-400 font-extrabold">R$ {grossSum.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+          Total Gastos: <span className="text-rose-500 font-extrabold">R$ {grossSum.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
         </p>
         <p className="font-black border-t border-border pt-1.5 mt-1.5 text-primary">
           Saldo Disponível: R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}

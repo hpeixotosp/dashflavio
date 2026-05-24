@@ -225,6 +225,13 @@ const generateInitialDashboardData = (): MonthData[] => {
         }
       });
     }
+
+    data.push({
+      id: monthId,
+      name: MONTH_NAMES[monthId],
+      proventos,
+      expenses
+    });
   });
 
   return data;

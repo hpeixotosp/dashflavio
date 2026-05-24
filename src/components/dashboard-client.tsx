@@ -1143,11 +1143,11 @@ function TableExpensesList({
       <Table>
         <TableHeader>
           <TableRow className="border-b border-border hover:bg-transparent">
-            <TableHead className="font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
-            <TableHead className="hidden md:table-cell w-[100px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
-            <TableHead className="w-[110px] md:w-[150px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
-            <TableHead className="w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
-            <TableHead className="w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Excluir</TableHead>
+            <TableHead className="px-1.5 md:px-3 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
+            <TableHead className="px-1.5 md:px-3 hidden md:table-cell w-[80px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
+            <TableHead className="px-1.5 md:px-3 w-[90px] md:w-[120px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
+            <TableHead className="px-1.5 md:px-3 w-[60px] md:w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
+            <TableHead className="px-1.5 md:px-3 w-[60px] md:w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Excluir</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1202,7 +1202,7 @@ function TableExpensesList({
                 `}
               >
                 {/* 1. Nome + Data de Pagamento Integrada logo abaixo */}
-                <TableCell className={`py-4 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"}`}>
+                <TableCell className={`px-1.5 md:px-3 py-3.5 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"}`}>
                   <div className="flex flex-col">
                     <span className={exp.paid && exp.type !== "adjustment" ? "line-through text-slate-500 font-medium" : ""}>
                       {cleanName(exp.name)}
@@ -1228,12 +1228,12 @@ function TableExpensesList({
                 </TableCell>
                 
                 {/* 2. Tipo Badge (Oculto no mobile) */}
-                <TableCell className="py-4 hidden md:table-cell">
+                <TableCell className="px-1.5 md:px-3 py-3.5 hidden md:table-cell">
                   {badgeComponent}
                 </TableCell>
 
                 {/* 3. Valor Editável */}
-                <TableCell className="py-4 text-right whitespace-nowrap">
+                <TableCell className="px-1.5 md:px-3 py-3.5 text-right whitespace-nowrap">
                   {isEditing ? (
                     <div className="flex items-center justify-end gap-1.5">
                       <span className="text-slate-500 text-sm font-bold">R$</span>
@@ -1246,7 +1246,7 @@ function TableExpensesList({
                           if (e.key === "Enter") handleSaveEdit(exp.id);
                           if (e.key === "Escape") setEditingId(null);
                         }}
-                        className={`w-28 text-right font-extrabold bg-background h-9 rounded-lg px-2 border-2
+                        className={`w-24 text-right font-extrabold bg-background h-9 rounded-lg px-2 border-2
                           ${exp.type === "adjustment" ? "text-emerald-400 border-emerald-500/40 focus:border-emerald-500" : "text-rose-500 border-rose-500/40 focus:border-rose-500"}`}
                         autoFocus
                         step="0.01"
@@ -1255,7 +1255,7 @@ function TableExpensesList({
                   ) : (
                     <div 
                       onClick={() => handleStartEdit(exp)}
-                      className={`inline-flex items-center gap-2 cursor-pointer rounded-xl px-3.5 py-2 border whitespace-nowrap bg-background/50 hover:bg-muted transition-colors
+                      className={`inline-flex items-center gap-1.5 cursor-pointer rounded-xl px-2.5 py-1.5 border whitespace-nowrap bg-background/50 hover:bg-muted transition-colors
                         ${exp.type === "adjustment" 
                           ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40 font-black" 
                           : ""
@@ -1286,7 +1286,7 @@ function TableExpensesList({
                 </TableCell>
 
                 {/* 4. Checkbox Pago / Badge de Crédito */}
-                <TableCell className="py-4 text-center">
+                <TableCell className="px-1.5 md:px-3 py-3.5 text-center">
                   {exp.type !== "adjustment" ? (
                     <button
                       onClick={() => onTogglePaid(exp.id)}
@@ -1307,7 +1307,7 @@ function TableExpensesList({
                 </TableCell>
 
                 {/* 5. Excluir Conta por Padrão */}
-                <TableCell className="py-4 text-center">
+                <TableCell className="px-1.5 md:px-3 py-3.5 text-center">
                   <button
                     onClick={() => onDelete(exp.id)}
                     className="text-slate-500 hover:text-rose-500 p-2 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer"

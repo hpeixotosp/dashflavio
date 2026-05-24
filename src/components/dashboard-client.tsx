@@ -1161,191 +1161,179 @@ function TableExpensesList({
 
   return (
     <div className="w-full">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-b border-border hover:bg-transparent">
-            <TableHead className="px-1.5 md:px-3 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
-            <TableHead className="px-1.5 md:px-3 hidden md:table-cell w-[80px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
-            <TableHead className="px-0.5 md:px-3 w-[90px] md:w-[140px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
-            <TableHead className="px-1 md:px-3 w-[44px] md:w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {expenses.map(exp => {
-            const isEditing = editingId === exp.id;
-            const isSaved = savedFeedbacks[exp.id];
-            
-            let badgeComponent = null;
-            if (exp.type === "consumption") {
-              if (isFuture && exp.value === 0) {
-                badgeComponent = (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-400 border border-amber-500/20 animate-pulse">
-                    Preencher!
-                  </span>
-                );
-              } else {
-                badgeComponent = (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/5 px-2.5 py-0.5 text-[11px] font-bold text-amber-500/80 border border-amber-500/10">
-                    Consumo
-                  </span>
-                );
-              }
-            } else if (exp.type === "fixed") {
-              badgeComponent = (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/5 px-2.5 py-0.5 text-[11px] font-bold text-primary border border-primary/10">
-                  Fixo
-                </span>
-              );
-            } else if (exp.type === "installment" && exp.installments) {
-              const current = exp.installments.current;
-              const total = exp.installments.total;
-              
-              badgeComponent = (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/5 px-2.5 py-0.5 text-[11px] font-bold text-purple-400/80 border border-purple-500/10">
-                  Parc. {current}/{total}
-                </span>
-              );
-            } else if (exp.type === "adjustment") {
-              badgeComponent = (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
-                  Reembolso
-                </span>
-              );
-            }
+      {/* Cabeçalho da lista */}
+      <div className="flex items-center gap-2 px-2 py-2 border-b border-border">
+        <span className="w-6 shrink-0" />
+        <span className="flex-1 min-w-0 text-xs font-extrabold text-slate-400 uppercase tracking-wider">Conta</span>
+        <span className="hidden md:block w-[90px] shrink-0 text-xs font-extrabold text-slate-400 uppercase tracking-wider text-right">Tipo</span>
+        <span className="w-[110px] shrink-0 text-xs font-extrabold text-slate-400 uppercase tracking-wider text-right">Valor</span>
+        <span className="w-8 shrink-0 text-xs font-extrabold text-slate-400 uppercase tracking-wider text-center">✓</span>
+      </div>
 
-            return (
-              <TableRow 
-                key={exp.id} 
-                className={`border-b border-border/50 hover:bg-muted/10 transition-colors
-                  ${exp.paid ? "bg-emerald-950/10" : ""}
-                  ${isSaved ? "bg-primary/5" : ""}
-                `}
-              >
-                {/* 1. Nome + Lixeira integrada + Data de Pagamento Integrada logo abaixo */}
-                <TableCell className={`px-1.5 md:px-3 py-3.5 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"}`}>
-                  <div className="flex items-start gap-1.5 md:gap-2.5">
-                    {/* Botão de Excluir Integrado (Super Acessível e Economiza Espaço) */}
-                    <button
-                      onClick={() => onDelete(exp.id)}
-                      className="text-slate-500 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0 mt-0.5"
-                      title="Excluir este item da lista deste mês"
-                    >
-                      <Trash2 className="h-4 w-4 md:h-4.5 md:w-4.5" />
-                    </button>
-                    
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className={`truncate block ${exp.paid && exp.type !== "adjustment" ? "line-through text-slate-500 font-medium" : ""}`}>
-                        {cleanName(exp.name)}
-                      </span>
-                      
-                      {/* DATA DE PAGAMENTO INTEGRADA: Espaço horizontal poupado e layout 100% limpo! */}
-                      {exp.paid && exp.type !== "adjustment" && (
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400 font-semibold animate-fadeIn">
-                          <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-wide uppercase">Pago</span>
-                          <span>no dia:</span>
-                          <div className="relative inline-flex items-center gap-1.5 bg-slate-900 border border-border rounded-lg px-2 py-0.5 text-xs text-slate-200">
-                            <input
-                              type="date"
-                              value={exp.paymentDate || ""}
-                              onChange={(e) => onDateChange(exp.id, e.target.value)}
-                              className="bg-transparent border-none text-slate-200 font-bold focus:outline-none focus:ring-0 cursor-pointer text-xs w-28 h-6"
-                              title="Alterar data do pagamento"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
-                
-                {/* 2. Tipo Badge (Oculto no mobile) */}
-                <TableCell className="px-1.5 md:px-3 py-3.5 hidden md:table-cell">
-                  {badgeComponent}
-                </TableCell>
+      {/* Linhas */}
+      {expenses.map(exp => {
+        const isEditing = editingId === exp.id;
+        const isSaved = savedFeedbacks[exp.id];
 
-                {/* 3. Valor Editável */}
-                <TableCell className="px-0.5 md:px-3 py-3.5 text-right">
-                  {isEditing ? (
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-slate-500 text-xs font-bold">R$</span>
-                      <Input
-                        type="number"
-                        value={tempValue}
-                        onChange={(e) => setTempValue(e.target.value)}
-                        onBlur={() => handleSaveEdit(exp.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveEdit(exp.id);
-                          if (e.key === "Escape") setEditingId(null);
-                        }}
-                        className={`w-20 md:w-24 text-right font-extrabold bg-background h-8 rounded-lg px-2 border-2
-                          ${exp.type === "adjustment" ? "text-emerald-400 border-emerald-500/40 focus:border-emerald-500" : "text-rose-500 border-rose-500/40 focus:border-rose-500"}`}
-                        autoFocus
-                        step="0.01"
-                      />
-                    </div>
-                  ) : (
-                    <div 
-                      onClick={() => handleStartEdit(exp)}
-                      className={`inline-flex flex-col items-end cursor-pointer rounded-xl px-1.5 md:px-2.5 py-1 md:py-1.5 border bg-background/50 hover:bg-muted transition-colors
-                        ${exp.type === "adjustment" 
-                          ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40 font-black" 
-                          : ""
-                        }
-                        ${exp.type !== "adjustment" && !exp.paid
-                          ? "text-rose-500 border-rose-500/20 bg-rose-500/5 hover:border-rose-500/40 font-bold" 
-                          : ""
-                        }
-                        ${exp.type !== "adjustment" && exp.paid
-                          ? "text-slate-500 line-through font-bold bg-transparent border-transparent" 
-                          : ""
-                        }
-                        ${isFuture && exp.value === 0 && exp.type === "consumption" 
-                          ? "border-dashed border-amber-500/40 bg-amber-500/5 text-amber-400 hover:border-amber-500/60 hover:bg-amber-950/20" 
-                          : ""
-                        }`}
-                      title="Clique para editar o valor"
-                    >
-                      {/* No mobile: R$ em cima, valor embaixo — para caber na tela */}
-                      <span className="text-[10px] md:hidden leading-none opacity-70">R$</span>
-                      <span className={`leading-tight ${isLargeText ? "text-base md:text-xl" : "text-sm md:text-lg"}`}>
-                        <span className="hidden md:inline">R$ </span>{exp.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                      {isSaved && (
-                        <CheckCircle className="h-3.5 w-3.5 md:h-4.5 md:w-4.5 text-emerald-500 animate-bounce stroke-[2.5]" />
-                      )}
-                    </div>
-                  )}
-                </TableCell>
-
-                {/* 4. Checkbox Pago / Badge de Crédito */}
-                <TableCell className="px-1 md:px-3 py-3.5 text-center">
-                  {exp.type !== "adjustment" ? (
-                    <button
-                      onClick={() => onTogglePaid(exp.id)}
-                      className={`h-7 w-7 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none cursor-pointer mx-auto
-                        ${exp.paid 
-                          ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20" 
-                          : "border-slate-700 bg-background hover:border-slate-500"
-                        }`}
-                      title={exp.paid ? "Marcar como pendente" : "Marcar como pago"}
-                    >
-                      {exp.paid && <Check className="h-4 w-4 stroke-[3]" />}
-                    </button>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-black text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
-                      Crédito
-                    </span>
-                  )}
-                </TableCell>
-
-              </TableRow>
+        let badgeComponent = null;
+        if (exp.type === "consumption") {
+          if (isFuture && exp.value === 0) {
+            badgeComponent = (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-400 border border-amber-500/20 animate-pulse">
+                Preencher!
+              </span>
             );
-          })}
-        </TableBody>
-      </Table>
+          } else {
+            badgeComponent = (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/5 px-2.5 py-0.5 text-[11px] font-bold text-amber-500/80 border border-amber-500/10">
+                Consumo
+              </span>
+            );
+          }
+        } else if (exp.type === "fixed") {
+          badgeComponent = (
+            <span className="inline-flex items-center gap-1 rounded-lg bg-primary/5 px-2.5 py-0.5 text-[11px] font-bold text-primary border border-primary/10">
+              Fixo
+            </span>
+          );
+        } else if (exp.type === "installment" && exp.installments) {
+          badgeComponent = (
+            <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/5 px-2.5 py-0.5 text-[11px] font-bold text-purple-400/80 border border-purple-500/10">
+              Parc. {exp.installments.current}/{exp.installments.total}
+            </span>
+          );
+        } else if (exp.type === "adjustment") {
+          badgeComponent = (
+            <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
+              Reembolso
+            </span>
+          );
+        }
+
+        return (
+          <div
+            key={exp.id}
+            className={`flex items-center gap-2 px-2 py-3 border-b border-border/50 hover:bg-muted/10 transition-colors
+              ${exp.paid ? "bg-emerald-950/10" : ""}
+              ${isSaved ? "bg-primary/5" : ""}
+            `}
+          >
+            {/* 1. Botão excluir */}
+            <button
+              onClick={() => onDelete(exp.id)}
+              className="text-slate-500 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+              title="Excluir este item"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+
+            {/* 2. Nome (ocupa todo o espaço disponível) */}
+            <div className="flex-1 min-w-0 flex flex-col">
+              <span className={`truncate font-bold text-slate-200 ${isLargeText ? "text-base" : "text-sm md:text-base"}
+                ${exp.paid && exp.type !== "adjustment" ? "line-through text-slate-500 font-medium" : ""}`}>
+                {cleanName(exp.name)}
+              </span>
+
+              {/* Badge de tipo — visível só no mobile abaixo do nome */}
+              <span className="md:hidden mt-0.5">{badgeComponent}</span>
+
+              {/* Data de pagamento */}
+              {exp.paid && exp.type !== "adjustment" && (
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400 font-semibold animate-fadeIn">
+                  <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-wide uppercase">Pago</span>
+                  <span>no dia:</span>
+                  <div className="relative inline-flex items-center gap-1.5 bg-slate-900 border border-border rounded-lg px-2 py-0.5 text-xs text-slate-200">
+                    <input
+                      type="date"
+                      value={exp.paymentDate || ""}
+                      onChange={(e) => onDateChange(exp.id, e.target.value)}
+                      className="bg-transparent border-none text-slate-200 font-bold focus:outline-none focus:ring-0 cursor-pointer text-xs w-28 h-6"
+                      title="Alterar data do pagamento"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Badge de tipo — visível apenas no desktop */}
+            <div className="hidden md:flex w-[90px] shrink-0 justify-end">
+              {badgeComponent}
+            </div>
+
+            {/* 4. Valor editável — largura fixa, nunca some */}
+            <div className="w-[110px] shrink-0 flex justify-end">
+              {isEditing ? (
+                <Input
+                  type="number"
+                  value={tempValue}
+                  onChange={(e) => setTempValue(e.target.value)}
+                  onBlur={() => handleSaveEdit(exp.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveEdit(exp.id);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  className={`w-[100px] text-right font-extrabold bg-background h-8 rounded-lg px-2 border-2
+                    ${exp.type === "adjustment" ? "text-emerald-400 border-emerald-500/40 focus:border-emerald-500" : "text-rose-500 border-rose-500/40 focus:border-rose-500"}`}
+                  autoFocus
+                  step="0.01"
+                />
+              ) : (
+                <div
+                  onClick={() => handleStartEdit(exp)}
+                  className={`inline-flex items-center gap-1 cursor-pointer rounded-xl px-2 py-1 border bg-background/50 hover:bg-muted transition-colors text-sm font-bold whitespace-nowrap
+                    ${exp.type === "adjustment"
+                      ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40 font-black"
+                      : ""
+                    }
+                    ${exp.type !== "adjustment" && !exp.paid
+                      ? "text-rose-500 border-rose-500/20 bg-rose-500/5 hover:border-rose-500/40"
+                      : ""
+                    }
+                    ${exp.type !== "adjustment" && exp.paid
+                      ? "text-slate-500 line-through bg-transparent border-transparent"
+                      : ""
+                    }
+                    ${isFuture && exp.value === 0 && exp.type === "consumption"
+                      ? "border-dashed border-amber-500/40 bg-amber-500/5 text-amber-400 hover:border-amber-500/60"
+                      : ""
+                    }`}
+                  title="Clique para editar o valor"
+                >
+                  R$ {exp.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  {isSaved && (
+                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500 animate-bounce stroke-[2.5]" />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 5. Checkbox Pago / Badge Crédito */}
+            <div className="w-8 shrink-0 flex justify-center">
+              {exp.type !== "adjustment" ? (
+                <button
+                  onClick={() => onTogglePaid(exp.id)}
+                  className={`h-7 w-7 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none cursor-pointer
+                    ${exp.paid
+                      ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20"
+                      : "border-slate-700 bg-background hover:border-slate-500"
+                    }`}
+                  title={exp.paid ? "Marcar como pendente" : "Marcar como pago"}
+                >
+                  {exp.paid && <Check className="h-4 w-4 stroke-[3]" />}
+                </button>
+              ) : (
+                <span className="inline-flex items-center rounded-lg bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-black text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
+                  CR
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
+
 
 // ==========================================================================
 // 5. CUSTOM CHART TOOLTIP

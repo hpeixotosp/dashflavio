@@ -109,7 +109,6 @@ const BASE_GENERAL_EXPENSES = [
   { id: "prevent", name: "Prevent", type: "fixed", value: 796.12, isAsterisk: false },
   { id: "nubank", name: "Nubank", type: "consumption", value: 400.00, isAsterisk: true },
   { id: "cartao_elo", name: "Cartão Elo", type: "consumption", value: 0.00, isAsterisk: true },
-  { id: "farmacia", name: "Farmácia", type: "consumption", value: 0.00, isAsterisk: true },
 ];
 
 const BASE_SPECIFIC_EXPENSES = [
@@ -151,14 +150,23 @@ const generateInitialDashboardData = (): MonthData[] => {
     // index indica a evolução desde Maio (Maio = 0, Junho = 1, etc.)
     const monthsSinceApril = index + 1;
 
-    // 1. Gerais
+    // 1. Gerais (Com preenchimento real de Maio)
     BASE_GENERAL_EXPENSES.forEach(exp => {
+      let val = exp.value;
       if (exp.isAsterisk) {
-        // ZERADAS por padrão a partir de Maio.
-        expenses.push({ ...JSON.parse(JSON.stringify(exp)), value: 0.00, paid: false });
-      } else {
-        expenses.push({ ...JSON.parse(JSON.stringify(exp)), paid: false });
+        if (index === 0) {
+          // Valores reais da imagem para Maio
+          if (exp.id === "sabesp") val = 100.00;
+          else if (exp.id === "cpfl") val = 415.00;
+          else if (exp.id === "nubank") val = 400.00;
+          else if (exp.id === "cartao_elo") val = 170.00;
+          else val = 0.00;
+        } else {
+          // Zerados nos demais meses
+          val = 0.00;
+        }
       }
+      expenses.push({ ...JSON.parse(JSON.stringify(exp)), value: val, paid: false });
     });
 
     // 2. Fixas específicas (Casa, Vivo, OSAN)
@@ -168,13 +176,19 @@ const generateInitialDashboardData = (): MonthData[] => {
       { id: "osan", name: "OSAN", type: "fixed", value: 65.00, isAsterisk: false, paid: false }
     );
 
-    // 3. Consumo específicas (Compras e IFOOD) - Zeradas a partir de Maio
+    // 3. Consumo específicas (Compras e IFOOD) - Pré-preenchidas em Maio, zeradas nos demais
+    let comprasVal = 0.00;
+    let ifoodVal = 0.00;
+    if (index === 0) {
+      comprasVal = 1080.00; // Valor real em Maio
+      ifoodVal = 150.00;    // Valor real em Maio
+    }
     expenses.push(
-      { id: "compras", name: "Compras", type: "consumption", value: 0.00, isAsterisk: true, paid: false },
-      { id: "ifood", name: "IFOOD", type: "consumption", value: 0.00, isAsterisk: true, paid: false }
+      { id: "compras", name: "Compras", type: "consumption", value: comprasVal, isAsterisk: true, paid: false },
+      { id: "ifood", name: "IFOOD", type: "consumption", value: ifoodVal, isAsterisk: true, paid: false }
     );
 
-    // 4. Lógica de parcelas decrementando
+    // 4. Lógica de parcelas decrementando (Débito)
     BASE_SPECIFIC_EXPENSES.forEach(exp => {
       if (exp.type === "installment" && exp.installments) {
         const nextInstallmentNum = exp.installments.current + monthsSinceApril;
@@ -195,12 +209,22 @@ const generateInitialDashboardData = (): MonthData[] => {
       }
     });
 
-    data.push({
-      id: monthId,
-      name: MONTH_NAMES[monthId],
-      proventos,
-      expenses
-    });
+    // 5. Farmácia como Reembolso/Ajuste (Crédito) parcelado de 18 meses (iniciando em 1/18)
+    const farmaciaInstallmentNum = monthsSinceApril; // 1 em Maio, 2 em Junho, etc.
+    if (farmaciaInstallmentNum <= 18) {
+      expenses.push({
+        id: "farmacia_reembolso",
+        name: `Farmácia (${farmaciaInstallmentNum}/18)`,
+        type: "adjustment",
+        value: 0.00, // Começa zerado para ser preenchido a cada mês
+        isAsterisk: false,
+        paid: false,
+        installments: {
+          current: farmaciaInstallmentNum,
+          total: 18
+        }
+      });
+    }
   });
 
   return data;
@@ -224,9 +248,16 @@ export default function DashboardClient() {
   const [newAccType, setNewAccType] = useState<"consumption" | "fixed" | "installment">("fixed");
   const [newAccInstallments, setNewAccInstallments] = useState<string>("1");
 
+  // Formulário de Novo Crédito
+  const [isCreditDialogOpen, setIsCreditDialogOpen] = useState<boolean>(false);
+  const [newCreditName, setNewCreditName] = useState<string>("");
+  const [newCreditValue, setNewCreditValue] = useState<string>("");
+  const [newCreditType, setNewCreditType] = useState<"fixed" | "installment">("fixed");
+  const [newCreditInstallments, setNewCreditInstallments] = useState<string>("1");
+
   useEffect(() => {
-    // Nova chave V7 para recarregar o novo layout limpo com Cartão Elo, Farmácia e Dente
-    const stored = localStorage.getItem("dashflavio_data_v7");
+    // Nova chave V8 para recarregar com Farmácia crédito e preenchimentos de Maio
+    const stored = localStorage.getItem("dashflavio_data_v8");
     if (stored) {
       try {
         setData(JSON.parse(stored));
@@ -236,7 +267,7 @@ export default function DashboardClient() {
     } else {
       const initial = generateInitialDashboardData();
       setData(initial);
-      localStorage.setItem("dashflavio_data_v7", JSON.stringify(initial));
+      localStorage.setItem("dashflavio_data_v8", JSON.stringify(initial));
     }
 
     const storedTextSize = localStorage.getItem("dashflavio_large_text");
@@ -313,7 +344,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v7", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v8", JSON.stringify(updated));
   };
 
   // Alterar data de pagamento manualmente
@@ -331,7 +362,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v7", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v8", JSON.stringify(updated));
   };
 
   // Alterar Provento do Mês
@@ -343,7 +374,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v7", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v8", JSON.stringify(updated));
   };
 
   // Alterar valor da despesa na tabela
@@ -362,7 +393,7 @@ export default function DashboardClient() {
     });
     
     setData(updated);
-    localStorage.setItem("dashflavio_data_v7", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v8", JSON.stringify(updated));
 
     setSavedFeedbacks(prev => ({ ...prev, [expenseId]: true }));
     setTimeout(() => {
@@ -380,7 +411,7 @@ export default function DashboardClient() {
         return m;
       });
       setData(updated);
-      localStorage.setItem("dashflavio_data_v7", JSON.stringify(updated));
+      localStorage.setItem("dashflavio_data_v8", JSON.stringify(updated));
     }
   };
 
@@ -420,13 +451,58 @@ export default function DashboardClient() {
     });
 
     setData(updated);
-    localStorage.setItem("dashflavio_data_v7", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v8", JSON.stringify(updated));
 
     setNewAccName("");
     setNewAccValue("");
     setNewAccType("fixed");
     setNewAccInstallments("1");
     setIsDialogOpen(false);
+  };
+
+  // Adicionar Novo Crédito Não Previsto
+  const handleAddCredit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedValue = parseFloat(newCreditValue);
+    if (!newCreditName.trim() || isNaN(parsedValue) || parsedValue < 0) {
+      alert("Por favor, preencha os dados corretamente.");
+      return;
+    }
+
+    const uniqueId = `custom_credit_${Date.now()}`;
+    const newCredit: Expense = {
+      id: uniqueId,
+      name: newCreditName,
+      type: "adjustment", // Crédito/Reembolso
+      value: parsedValue,
+      isAsterisk: false,
+      paid: false
+    };
+
+    if (newCreditType === "installment") {
+      const totalInst = parseInt(newCreditInstallments) || 1;
+      newCredit.installments = {
+        current: 1,
+        total: totalInst
+      };
+      newCredit.name = `${newCreditName} (1/${totalInst})`;
+    }
+
+    const updated = data.map(m => {
+      if (m.id === selectedMonthId) {
+        return { ...m, expenses: [...m.expenses, newCredit] };
+      }
+      return m;
+    });
+
+    setData(updated);
+    localStorage.setItem("dashflavio_data_v8", JSON.stringify(updated));
+
+    setNewCreditName("");
+    setNewCreditValue("");
+    setNewCreditType("fixed");
+    setNewCreditInstallments("1");
+    setIsCreditDialogOpen(false);
   };
 
   // Exportar Backup
@@ -512,7 +588,7 @@ export default function DashboardClient() {
                         type="text"
                         value={newAccName}
                         onChange={(e) => setNewAccName(e.target.value)}
-                        placeholder="Ex: Farmácia, Mercado Extra"
+                        placeholder="Ex: Sabesp, CPFL, Mercado"
                         className="h-12 border-border bg-background focus:border-primary rounded-xl"
                         required
                       />
@@ -560,6 +636,83 @@ export default function DashboardClient() {
                     <Button 
                       type="submit" 
                       className="h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-md mt-2 w-full"
+                    >
+                      Confirmar e Adicionar
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+              {/* Adicionar Crédito Não Previsto */}
+              <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
+                <DialogTrigger
+                  className="flex h-12 items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg font-bold px-4 md:px-5 cursor-pointer transition-all inline-flex justify-center border border-emerald-500/20 hover:scale-105"
+                  title="Adicionar uma receita ou reembolso na tabela"
+                >
+                  <Plus className="h-5 w-5 stroke-[2.5]" />
+                  <span className="hidden sm:inline">Novo Crédito</span>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[440px] rounded-2xl bg-card border border-border p-6 shadow-2xl text-foreground">
+                  <DialogHeader>
+                    <DialogTitle className="text-white font-extrabold text-xl">Adicionar Crédito / Reembolso</DialogTitle>
+                    <DialogDescription className="text-muted-foreground text-sm">
+                      Insira os detalhes abaixo para adicionar este reembolso ou ajuda na tabela de <strong className="capitalize text-emerald-400 font-extrabold">{selectedMonth.name}</strong>.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAddCredit} className="flex flex-col gap-4 mt-4 text-foreground">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Nome do Crédito</label>
+                      <Input
+                        type="text"
+                        value={newCreditName}
+                        onChange={(e) => setNewCreditName(e.target.value)}
+                        placeholder="Ex: Reembolso Consulta, Ajuda Clovis"
+                        className="h-12 border-border bg-background focus:border-emerald-500 rounded-xl"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Valor Inicial (R$)</label>
+                      <Input
+                        type="number"
+                        value={newCreditValue}
+                        onChange={(e) => setNewCreditValue(e.target.value)}
+                        placeholder="0,00"
+                        step="0.01"
+                        min="0"
+                        className="h-12 border-border bg-background focus:border-emerald-500 rounded-xl"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Tipo de Crédito</label>
+                      <select
+                        value={newCreditType}
+                        onChange={(e) => setNewCreditType(e.target.value as any)}
+                        className="h-12 w-full rounded-xl border border-border bg-background px-3 font-semibold text-foreground focus:border-emerald-500 focus:outline-none"
+                      >
+                        <option value="fixed">Crédito Fixo (recorrente)</option>
+                        <option value="installment">Crédito Parcelado</option>
+                      </select>
+                    </div>
+
+                    {newCreditType === "installment" && (
+                      <div className="flex flex-col gap-1.5 animate-fadeIn">
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Total de Parcelas</label>
+                        <Input
+                          type="number"
+                          value={newCreditInstallments}
+                          onChange={(e) => setNewCreditInstallments(e.target.value)}
+                          min="1"
+                          className="h-12 border-border bg-background focus:border-emerald-500 rounded-xl"
+                          required
+                        />
+                      </div>
+                    )}
+
+                    <Button 
+                      type="submit" 
+                      className="h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-md mt-2 w-full"
                     >
                       Confirmar e Adicionar
                     </Button>

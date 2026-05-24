@@ -453,9 +453,14 @@ export default function DashboardClient() {
     }, 1000);
   };
 
-  // Excluir qualquer conta! ("eu devo ter a opção de excluí-la.")
+  // Excluir qualquer conta ou reembolso!
   const handleDeleteExpense = (expenseId: string) => {
-    if (confirm("Você deseja realmente excluir esta conta da lista deste mês?")) {
+    const month = data.find(m => m.id === selectedMonthId);
+    const item = month?.expenses.find(e => e.id === expenseId);
+    const isCredit = item?.type === "adjustment";
+    const typeText = isCredit ? "este crédito/reembolso" : "esta conta";
+
+    if (confirm(`Você deseja realmente excluir ${typeText} da lista deste mês?`)) {
       const updated = data.map(m => {
         if (m.id === selectedMonthId) {
           return { ...m, expenses: m.expenses.filter(e => e.id !== expenseId) };
@@ -605,15 +610,15 @@ export default function DashboardClient() {
           <div className="mx-auto flex flex-col md:flex-row max-w-7xl items-start md:items-center justify-between px-6 py-5 md:px-8 gap-4 md:gap-0">
             
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-indigo-500 text-white font-black text-2xl shadow-xl shadow-primary/25 border border-primary/20 tracking-wider">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-rose-500 to-indigo-600 text-white font-black text-2xl shadow-xl shadow-rose-550/25 border border-rose-500/20 tracking-wider">
                 LH
               </div>
               <div>
-                <h1 className="font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent flex items-center gap-2 text-2xl md:text-3xl">
-                  Lady&apos;s House
+                <h1 className="font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent flex items-center gap-2 text-xl md:text-3xl">
+                  Controle Financeiro Lady&apos;s House
                 </h1>
-                <p className="text-muted-foreground/90 font-black text-[9px] md:text-[10px] uppercase tracking-[0.22em] mt-1">
-                  CONTROLE FINANCEIRO LADY&apos;S HOUSE
+                <p className="text-rose-500 font-extrabold text-[9px] md:text-[10px] uppercase tracking-[0.25em] mt-1 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-rose-500 animate-pulse" /> GESTÃO DE ENTRADAS, DESPESAS E SALDOS 2026
                 </p>
               </div>
             </div>
@@ -1142,7 +1147,7 @@ function TableExpensesList({
             <TableHead className="hidden md:table-cell w-[100px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
             <TableHead className="w-[110px] md:w-[150px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
             <TableHead className="w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
-            <TableHead className="w-[50px] text-center"></TableHead> {/* Lixeira */}
+            <TableHead className="w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Excluir</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

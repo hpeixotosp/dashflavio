@@ -21,9 +21,9 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${plusJakarta.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-slate-50/50">{children}</body>
+      <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>
   );
 }

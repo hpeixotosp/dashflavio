@@ -59,7 +59,7 @@ import {
 } from "recharts";
 
 // ==========================================================================
-// 1. MODELOS E ESTRUTURAS DE DADOS (V4)
+// 1. MODELOS E ESTRUTURAS DE DADOS (V4 - ESTÁVEL)
 // ==========================================================================
 
 interface Expense {
@@ -67,9 +67,9 @@ interface Expense {
   name: string;
   type: "consumption" | "fixed" | "installment" | "adjustment";
   value: number;
-  isAsterisk: boolean; // Identificação interna de variável
-  paid: boolean; // Se está pago
-  paymentDate?: string; // Data do pagamento
+  isAsterisk: boolean;
+  paid: boolean;
+  paymentDate?: string;
   installments?: {
     current: number;
     total: number;
@@ -98,7 +98,6 @@ const MONTH_NAMES: Record<string, string> = {
   dezembro: "Dezembro"
 };
 
-// Despesas base oriundas de Abril
 const BASE_GENERAL_EXPENSES = [
   { id: "sabesp", name: "Sabesp", type: "consumption", value: 100.00, isAsterisk: true },
   { id: "cpfl", name: "CPFL", type: "consumption", value: 414.95, isAsterisk: true },
@@ -152,7 +151,7 @@ const generateInitialDashboardData = (): MonthData[] => {
     // 1. Gerais
     BASE_GENERAL_EXPENSES.forEach(exp => {
       if (exp.isAsterisk) {
-        // ZERADAS por padrão a partir de Maio. Sr. Flávio ajusta manualmente.
+        // ZERADAS por padrão a partir de Maio.
         expenses.push({ ...JSON.parse(JSON.stringify(exp)), value: 0.00, paid: false });
       } else {
         expenses.push({ ...JSON.parse(JSON.stringify(exp)), paid: false });
@@ -204,7 +203,7 @@ const generateInitialDashboardData = (): MonthData[] => {
   return data;
 };
 
-// Sanitização robusta para limpar asteriscos dos nomes na tela
+// Sanitização de nomes de exibição (garante a remoção de asteriscos)
 const cleanName = (name: string) => {
   return name.replace(/\*/g, "").trim();
 };
@@ -223,8 +222,8 @@ export default function DashboardClient() {
   const [newAccInstallments, setNewAccInstallments] = useState<string>("1");
 
   useEffect(() => {
-    // Usamos a chave V4 para carregar a nova arquitetura sem conflitos
-    const stored = localStorage.getItem("dashflavio_data_v4");
+    // Nova chave V5 para recarregar o novo layout limpo sem asteriscos
+    const stored = localStorage.getItem("dashflavio_data_v5");
     if (stored) {
       try {
         setData(JSON.parse(stored));
@@ -234,7 +233,7 @@ export default function DashboardClient() {
     } else {
       const initial = generateInitialDashboardData();
       setData(initial);
-      localStorage.setItem("dashflavio_data_v4", JSON.stringify(initial));
+      localStorage.setItem("dashflavio_data_v5", JSON.stringify(initial));
     }
 
     const storedTextSize = localStorage.getItem("dashflavio_large_text");
@@ -245,8 +244,8 @@ export default function DashboardClient() {
 
   if (data.length === 0) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <p className="text-xl font-bold text-blue-400 animate-pulse font-sans tracking-wide">Carregando painel...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <p className="text-xl font-bold text-primary animate-pulse font-sans tracking-wide">Carregando painel...</p>
       </div>
     );
   }
@@ -263,29 +262,28 @@ export default function DashboardClient() {
   const installmentExpenses = selectedMonth.expenses.filter(e => e.type === "installment");
   const adjustments = selectedMonth.expenses.filter(e => e.type === "adjustment");
 
-  // 1. Saídas (Total de Gastos) = Todas as contas ativas listadas no mês são consideradas por padrão!
-  // Não é necessário clicar em nada para considerá-las.
+  // 1. Saídas (Total de Gastos) = Todas as contas ativas listadas são consideradas por padrão!
   const grossExpenses = 
     consumptionExpenses.reduce((sum, e) => sum + e.value, 0) +
     fixedExpenses.reduce((sum, e) => sum + e.value, 0) +
     installmentExpenses.reduce((sum, e) => sum + e.value, 0);
 
-  // Total de reembolsos/descontos
+  // Total de descontos
   const totalAdjustments = adjustments.reduce((sum, e) => sum + e.value, 0);
 
-  // Total de Gastos (Saídas) final considerado
+  // Total de Gastos Líquidos (Saídas)
   const totalExpensesValue = Math.max(0, grossExpenses - totalAdjustments);
-
-  // Total das contas dadas como pagas (para alertas de pendência)
-  const totalPaidExpenses = selectedMonth.expenses
-    .filter(e => e.paid && e.type !== "adjustment")
-    .reduce((sum, e) => sum + e.value, 0);
 
   // 2. Entradas = Proventos + Reembolsos
   const totalIncomeValue = proventosValue + totalAdjustments;
 
-  // 3. Saldo Disponível (Diferença) = Entradas - Saídas (Gastos considerados por padrão!)
+  // 3. Saldo Disponível (Diferença) = Entradas - Saídas
   const balanceAvailable = totalIncomeValue - totalExpensesValue;
+
+  // Total das faturas pagas no mês (para exibição de pendências)
+  const totalPaidExpenses = selectedMonth.expenses
+    .filter(e => e.paid && e.type !== "adjustment")
+    .reduce((sum, e) => sum + e.value, 0);
 
   // ==========================================================================
   // EDITORES DE ESTADO E PERSISTÊNCIA
@@ -312,7 +310,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v5", JSON.stringify(updated));
   };
 
   // Alterar data de pagamento manualmente
@@ -330,7 +328,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v5", JSON.stringify(updated));
   };
 
   // Alterar Provento do Mês
@@ -342,7 +340,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v5", JSON.stringify(updated));
   };
 
   // Alterar valor da despesa na tabela
@@ -361,7 +359,7 @@ export default function DashboardClient() {
     });
     
     setData(updated);
-    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v5", JSON.stringify(updated));
 
     setSavedFeedbacks(prev => ({ ...prev, [expenseId]: true }));
     setTimeout(() => {
@@ -371,7 +369,7 @@ export default function DashboardClient() {
 
   // Excluir qualquer conta! ("eu devo ter a opção de excluí-la.")
   const handleDeleteExpense = (expenseId: string) => {
-    if (confirm("Você deseja realmente excluir esta conta da lista deste mês? O total de gastos e o saldo serão atualizados imediatamente.")) {
+    if (confirm("Você deseja realmente excluir esta conta da lista deste mês?")) {
       const updated = data.map(m => {
         if (m.id === selectedMonthId) {
           return { ...m, expenses: m.expenses.filter(e => e.id !== expenseId) };
@@ -379,7 +377,7 @@ export default function DashboardClient() {
         return m;
       });
       setData(updated);
-      localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
+      localStorage.setItem("dashflavio_data_v5", JSON.stringify(updated));
     }
   };
 
@@ -419,7 +417,7 @@ export default function DashboardClient() {
     });
 
     setData(updated);
-    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v5", JSON.stringify(updated));
 
     setNewAccName("");
     setNewAccValue("");
@@ -447,9 +445,7 @@ export default function DashboardClient() {
     localStorage.setItem("dashflavio_large_text", String(newVal));
   };
 
-  // ==========================================================================
   // ESTRUTURAÇÃO DE DADOS PARA O GRÁFICO (GASTOS TOTAIS PROJETADOS POR PADRÃO)
-  // ==========================================================================
   const chartData = data.map(m => {
     const mConsumption = m.expenses.filter(e => e.type === "consumption").reduce((sum, e) => sum + e.value, 0);
     const mFixed = m.expenses.filter(e => e.type === "fixed").reduce((sum, e) => sum + e.value, 0);
@@ -467,23 +463,23 @@ export default function DashboardClient() {
 
   return (
     <TooltipProvider>
-      <div className={`min-h-screen bg-slate-955 font-sans antialiased text-slate-100 selection:bg-indigo-500 selection:text-white ${isLargeText ? "text-lg md:text-xl" : "text-base"}`}>
+      <div className={`min-h-screen bg-background font-sans antialiased text-foreground selection:bg-primary/30 selection:text-primary-foreground ${isLargeText ? "text-lg md:text-xl" : "text-base"}`}>
         
         {/* ==========================================================================
-           HEADER PREMIUM DEFAULT DARK LUXURY
+           HEADER ULTRA-PREMIUM NATIVE DARK LUXURY
            ========================================================================== */}
-        <header className="sticky top-0 z-50 w-full border-b border-slate-900 bg-slate-950/85 backdrop-blur-xl">
+        <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 md:px-8">
             
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 text-white font-extrabold text-2xl shadow-xl shadow-indigo-500/10 border border-indigo-400/20">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-indigo-500 text-white font-extrabold text-2xl shadow-xl shadow-primary/10 border border-primary/20">
                 LH
               </div>
               <div>
                 <h1 className="font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent flex items-center gap-2 text-2xl md:text-3xl">
                   Lady&apos;s House
                 </h1>
-                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-0.5">
+                <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest mt-0.5">
                   Controle financeiro Lady&apos;s House
                 </p>
               </div>
@@ -493,33 +489,33 @@ export default function DashboardClient() {
               {/* Adicionar Conta Não Prevista */}
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger
-                  className="flex h-12 items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg font-bold px-4 md:px-5 cursor-pointer transition-colors inline-flex justify-center"
+                  className="flex h-12 items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg font-bold px-4 md:px-5 cursor-pointer transition-all inline-flex justify-center border border-primary/20 hover:scale-105"
                   title="Adicionar uma conta não programada na tabela"
                 >
                   <Plus className="h-5 w-5 stroke-[2.5]" />
                   <span className="hidden sm:inline">Nova Conta</span>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[440px] rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl text-slate-100">
+                <DialogContent className="sm:max-w-[440px] rounded-2xl bg-card border border-border p-6 shadow-2xl text-foreground">
                   <DialogHeader>
                     <DialogTitle className="text-white font-extrabold text-xl">Adicionar Conta Não Prevista</DialogTitle>
-                    <DialogDescription className="text-slate-400 text-sm">
-                      Insira os detalhes abaixo para adicionar este gasto na tabela de <strong className="capitalize text-indigo-400 font-extrabold">{selectedMonth.name}</strong>.
+                    <DialogDescription className="text-muted-foreground text-sm">
+                      Insira os detalhes abaixo para adicionar este gasto na tabela de <strong className="capitalize text-primary font-extrabold">{selectedMonth.name}</strong>.
                     </DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={handleAddAccount} className="flex flex-col gap-4 mt-4 text-slate-100">
+                  <form onSubmit={handleAddAccount} className="flex flex-col gap-4 mt-4 text-foreground">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Nome da Conta</label>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Nome da Conta</label>
                       <Input
                         type="text"
                         value={newAccName}
                         onChange={(e) => setNewAccName(e.target.value)}
                         placeholder="Ex: Farmácia, Mercado Extra"
-                        className="h-12 border-slate-800 bg-slate-950 focus:border-indigo-500 rounded-xl"
+                        className="h-12 border-border bg-background focus:border-primary rounded-xl"
                         required
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Valor Inicial (R$)</label>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Valor Inicial (R$)</label>
                       <Input
                         type="number"
                         value={newAccValue}
@@ -527,16 +523,16 @@ export default function DashboardClient() {
                         placeholder="0,00"
                         step="0.01"
                         min="0"
-                        className="h-12 border-slate-800 bg-slate-950 focus:border-indigo-500 rounded-xl"
+                        className="h-12 border-border bg-background focus:border-primary rounded-xl"
                         required
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Tipo de Gasto</label>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Tipo de Gasto</label>
                       <select
                         value={newAccType}
                         onChange={(e) => setNewAccType(e.target.value as any)}
-                        className="h-12 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 font-semibold text-slate-300 focus:border-indigo-500 focus:outline-none"
+                        className="h-12 w-full rounded-xl border border-border bg-background px-3 font-semibold text-foreground focus:border-primary focus:outline-none"
                       >
                         <option value="fixed">Gasto Fixo (recorrente)</option>
                         <option value="consumption">Gasto de Consumo (variável)</option>
@@ -546,13 +542,13 @@ export default function DashboardClient() {
 
                     {newAccType === "installment" && (
                       <div className="flex flex-col gap-1.5 animate-fadeIn">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Total de Parcelas</label>
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Total de Parcelas</label>
                         <Input
                           type="number"
                           value={newAccInstallments}
                           onChange={(e) => setNewAccInstallments(e.target.value)}
                           min="1"
-                          className="h-12 border-slate-800 bg-slate-950 focus:border-indigo-500 rounded-xl"
+                          className="h-12 border-border bg-background focus:border-primary rounded-xl"
                           required
                         />
                       </div>
@@ -560,7 +556,7 @@ export default function DashboardClient() {
 
                     <Button 
                       type="submit" 
-                      className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md mt-2 w-full"
+                      className="h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-md mt-2 w-full"
                     >
                       Confirmar e Adicionar
                     </Button>
@@ -572,10 +568,10 @@ export default function DashboardClient() {
               <Button
                 variant="outline"
                 onClick={toggleTextSize}
-                className="flex h-12 items-center gap-2 border-slate-800 bg-slate-900/50 hover:bg-indigo-950/30 hover:border-indigo-500/30 text-slate-300 hover:text-indigo-400 shadow-sm transition-all rounded-xl px-4"
+                className="flex h-12 items-center gap-2 border-border bg-card hover:bg-muted hover:border-primary/20 text-foreground shadow-sm transition-all rounded-xl px-4"
                 title="Aumentar tamanho das letras para melhor conforto"
               >
-                <Type className="h-5 w-5 text-indigo-400" />
+                <Type className="h-5 w-5 text-primary" />
                 <span className="hidden sm:inline font-bold">Texto {isLargeText ? "Padrão" : "Grande"}</span>
               </Button>
 
@@ -583,10 +579,10 @@ export default function DashboardClient() {
               <Button
                 variant="outline"
                 onClick={handleExport}
-                className="flex h-12 items-center gap-2 border-slate-800 bg-slate-900/50 hover:bg-indigo-950/30 hover:border-indigo-500/30 text-slate-300 hover:text-indigo-400 shadow-sm transition-all rounded-xl px-4"
+                className="flex h-12 items-center gap-2 border-border bg-card hover:bg-muted hover:border-primary/20 text-foreground shadow-sm transition-all rounded-xl px-4"
                 title="Salvar arquivo de backup localmente"
               >
-                <Download className="h-5 w-5 text-indigo-400" />
+                <Download className="h-5 w-5 text-primary" />
                 <span className="hidden sm:inline font-bold">Backup</span>
               </Button>
             </div>
@@ -597,10 +593,10 @@ export default function DashboardClient() {
         <main className="mx-auto max-w-7xl px-6 py-10 md:px-8">
           
           {/* ==========================================================================
-             SELETOR DE MESES HORIZONTAL COMPLETO (SEM BOTOES ANTERIOR/PROXIMO NO DESKTOP)
+             SELETOR DE MESES HORIZONTAL COMPLETO (DESKTOP E DROPDOWN MOBILE)
              ========================================================================== */}
-          <section className="mb-10 rounded-2xl bg-slate-900/40 p-5 border border-slate-900 shadow-sm backdrop-blur-md">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-4 text-center sm:text-left">
+          <section className="mb-10 rounded-2xl bg-card p-5 border border-border shadow-md">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-4 text-center sm:text-left">
               Selecione o mês para visualizar e gerenciar
             </span>
             
@@ -612,10 +608,10 @@ export default function DashboardClient() {
                   <button
                     key={mId}
                     onClick={() => setSelectedMonthId(mId)}
-                    className={`flex-1 h-12 rounded-xl font-extrabold transition-all text-sm uppercase tracking-wider border text-center flex items-center justify-center
+                    className={`flex-1 h-12 rounded-xl font-extrabold transition-all text-sm uppercase tracking-wider border text-center flex items-center justify-center cursor-pointer
                       ${isActive 
-                        ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-105" 
-                        : "bg-slate-950/60 hover:bg-slate-800 text-slate-400 border-slate-900 hover:text-slate-200"
+                        ? "bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105" 
+                        : "bg-background hover:bg-muted text-muted-foreground border-border hover:text-foreground"
                       }`}
                   >
                     {MONTH_NAMES[mId]}
@@ -629,7 +625,7 @@ export default function DashboardClient() {
               <select
                 value={selectedMonthId}
                 onChange={(e) => setSelectedMonthId(e.target.value)}
-                className="w-full h-14 rounded-2xl border-2 border-slate-800 bg-slate-950 px-5 font-black text-slate-300 uppercase tracking-wider text-base focus:border-indigo-500 focus:outline-none appearance-none"
+                className="w-full h-14 rounded-2xl border-2 border-border bg-card px-5 font-black text-foreground uppercase tracking-wider text-base focus:border-primary focus:outline-none appearance-none"
               >
                 {MONTHS_ORDER.map(mId => (
                   <option key={mId} value={mId}>
@@ -637,27 +633,26 @@ export default function DashboardClient() {
                   </option>
                 ))}
               </select>
-              <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+              <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                 <ChevronDown className="h-6 w-6 stroke-[3]" />
               </div>
             </div>
           </section>
 
           {/* ==========================================================================
-             CARTÕES DE RESUMO (AS CONTAS SÃO CONSIDERADAS POR PADRÃO!)
+             CARTÕES DE RESUMO (NATIVE DEEP SLATE CARDS)
              ========================================================================== */}
           <section className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             
             {/* Card Proventos */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950 p-7 border border-slate-900 shadow-xl shadow-slate-950/50 group hover:border-emerald-500/20 transition-all duration-300">
-              <div className="absolute right-0 top-0 h-32 w-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300" />
-              <div className="flex items-center gap-5">
+            <Card className="shadow-lg border-border bg-card group hover:border-emerald-500/30 transition-all duration-300">
+              <CardContent className="flex items-center gap-5 p-7">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-md">
                   <TrendingUp className="h-7 w-7 stroke-[2.5]" />
                 </div>
                 <div className="flex-1">
-                  <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Minhas Entradas</span>
-                  <span className="text-[10px] text-slate-505 font-semibold mt-0.5 block">Altere clicando no número:</span>
+                  <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider block">Minhas Entradas</span>
+                  <span className="text-[10px] text-muted-foreground/60 font-semibold mt-0.5 block">Altere clicando no número:</span>
                   <div className="relative mt-2.5 flex items-center">
                     <span className="mr-1 text-slate-400 font-bold text-xl">R$</span>
                     <input
@@ -672,86 +667,82 @@ export default function DashboardClient() {
                     />
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Card Gastos (Soma de todas as contas por padrão, não precisa clicar em nada!) */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950 p-7 border border-slate-900 shadow-xl shadow-slate-950/50 group hover:border-rose-500/20 transition-all duration-300">
-              <div className="absolute right-0 top-0 h-32 w-32 bg-rose-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-rose-500/10 transition-all duration-300" />
-              <div className="flex items-center gap-5">
+            <Card className="shadow-lg border-border bg-card group hover:border-rose-500/30 transition-all duration-300">
+              <CardContent className="flex items-center gap-5 p-7">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-md">
                   <TrendingDown className="h-7 w-7 stroke-[2.5]" />
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Total de Gastos (Saídas)</span>
-                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5 block">Soma de todas as despesas listadas:</span>
+                  <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider block">Total de Gastos (Saídas)</span>
+                  <span className="text-[10px] text-muted-foreground/60 font-semibold mt-0.5 block">Soma de todas as despesas listadas:</span>
                   <p className={`font-black text-rose-400 mt-2.5 tracking-tight ${isLargeText ? "text-4xl" : "text-3xl"}`}>
                     R$ {totalExpensesValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Card Saldo Final */}
-            <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-b p-7 border shadow-xl shadow-slate-955/50 transition-all duration-300 group
+            <Card className={`shadow-lg border-border transition-all duration-300 group
               ${balanceAvailable >= 0 
-                ? "from-slate-900/90 to-slate-950 border-slate-900 hover:border-indigo-500/20" 
-                : "from-red-950/20 to-slate-950 border-red-950 hover:border-red-500/30"
+                ? "bg-card hover:border-primary/30" 
+                : "bg-red-950/10 border-red-900/30 hover:border-red-500/40"
               }`}>
-              <div className={`absolute right-0 top-0 h-32 w-32 rounded-full blur-3xl pointer-events-none transition-all duration-300
-                ${balanceAvailable >= 0 ? "bg-indigo-500/5 group-hover:bg-indigo-500/10" : "bg-red-500/10 group-hover:bg-red-500/20"}`} 
-              />
-              <div className="flex items-center gap-5">
+              <CardContent className="flex items-center gap-5 p-7">
                 <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border shadow-md
                   ${balanceAvailable >= 0 
-                    ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" 
+                    ? "bg-primary/10 text-primary border-primary/20" 
                     : "bg-red-500/20 text-red-400 border-red-500/30"
                   }`}>
                   <Wallet className="h-7 w-7 stroke-[2.5]" />
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Saldo Disponível</span>
-                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Dinheiro líquido restante:</span>
+                  <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider block">Saldo Disponível</span>
+                  <span className="text-[10px] text-muted-foreground/60 font-semibold mt-0.5 block">Dinheiro líquido restante:</span>
                   <p className={`font-black mt-2.5 tracking-tight
-                    ${balanceAvailable >= 0 ? "text-indigo-400" : "text-red-500"}
+                    ${balanceAvailable >= 0 ? "text-primary" : "text-red-500"}
                     ${isLargeText ? "text-4xl" : "text-3xl"}`}>
                     R$ {balanceAvailable.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
           </section>
 
           {/* ==========================================================================
-             CONTEÚDO DO DASHBOARD (TABELAS DE CONTAS E GRÁFICOS)
+             GRADE DE LAYOUT (ESQUERDA: LISTA FINANCEIRA, DIREITA: GRÁFICOS)
              ========================================================================== */}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             
             {/* Esquerda: Listagem de Contas por Categoria */}
             <div className="lg:col-span-7 flex flex-col gap-6">
               
-              <Card className="shadow-2xl bg-slate-900/30 border-slate-900 backdrop-blur-md rounded-2xl overflow-hidden">
-                <CardHeader className="border-b border-slate-800 bg-slate-900/50 pb-5 px-6">
+              <Card className="shadow-2xl border-border bg-card rounded-2xl overflow-hidden">
+                <CardHeader className="border-b border-border bg-muted/30 pb-5 px-6">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                       <CardTitle className={`font-black text-slate-100 flex items-center gap-2 ${isLargeText ? "text-2xl" : "text-xl"}`}>
-                        Contas de <span className="capitalize text-indigo-400 font-black">{selectedMonth.name}</span>
+                        Contas de <span className="capitalize text-primary font-black">{selectedMonth.name}</span>
                       </CardTitle>
-                      <CardDescription className={`text-slate-400 font-medium ${isLargeText ? "text-base" : "text-sm"}`}>
-                        Todas as contas são somadas por padrão. Marque a bola para dar baixa como PAGO e registrar a data. Clique na lixeira para excluir.
+                      <CardDescription className={`text-muted-foreground font-medium ${isLargeText ? "text-base" : "text-sm"}`}>
+                        Dê um clique no valor em azul para atualizar. Todas as contas são somadas por padrão.
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 
-                <CardContent className="p-0">
-                  <div className="flex flex-col gap-8 p-6">
+                <CardContent className="p-6">
+                  <div className="flex flex-col gap-6">
                     
-                    {/* 1. Grupo Principal de Contas (Unificado, Limpo e Excluível) */}
-                    <div className="rounded-2xl border border-slate-900 bg-slate-950/20 p-5">
-                      <div className="flex items-center gap-3 mb-3 border-b border-slate-900 pb-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    {/* Grupo Único e Limpo de Contas */}
+                    <div className="rounded-2xl border border-border bg-background/50 p-5">
+                      <div className="flex items-center gap-3 mb-4 border-b border-border pb-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
                           <Zap className="h-5 w-5 stroke-[2.5]" />
                         </div>
                         <h3 className="font-black text-slate-200 text-lg">Contas</h3>
@@ -769,10 +760,10 @@ export default function DashboardClient() {
                       />
                     </div>
 
-                    {/* 2. Grupo de Reembolsos / Ajustes */}
+                    {/* Grupo de Reembolsos / Ajustes */}
                     {adjustments.length > 0 && (
-                      <div className="rounded-2xl border border-emerald-950/30 bg-emerald-950/5 p-5">
-                        <div className="flex items-center gap-3 mb-3 border-b border-emerald-950/20 pb-3">
+                      <div className="rounded-2xl border border-border bg-background/50 p-5">
+                        <div className="flex items-center gap-3 mb-4 border-b border-border pb-3">
                           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             <Percent className="h-5 w-5 stroke-[2.5]" />
                           </div>
@@ -800,19 +791,19 @@ export default function DashboardClient() {
             {/* Direita: Gráfico de Evolução e Estatísticas */}
             <div className="lg:col-span-5 flex flex-col gap-6">
               
-              {/* Gráfico de Barras de Gastos Pagos */}
-              <Card className="shadow-2xl bg-slate-900/30 border-slate-900 backdrop-blur-md rounded-2xl overflow-hidden p-6">
+              {/* Gráfico de Barras de Gastos Totais */}
+              <Card className="shadow-2xl border-border bg-card rounded-2xl overflow-hidden p-6">
                 <div className="mb-6">
                   <h3 className={`font-black text-slate-100 flex items-center gap-2 ${isLargeText ? "text-2xl" : "text-xl"}`}>
-                    <Sparkles className="h-6 w-6 text-indigo-400" />
+                    <Sparkles className="h-6 w-6 text-primary" />
                     Gastos do Mês
                   </h3>
-                  <p className="text-slate-400 font-medium text-xs mt-1">
+                  <p className="text-muted-foreground font-medium text-xs mt-1">
                     Este gráfico projeta o **Total de Gastos** considerado por padrão para cada mês de Maio a Dezembro de 2026.
                   </p>
                 </div>
                 
-                <div className="h-80 w-full bg-slate-950/40 rounded-xl p-4 border border-slate-900">
+                <div className="h-80 w-full bg-slate-950/40 rounded-2xl p-5 border border-border/80 shadow-inner">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={chartData}
@@ -820,25 +811,25 @@ export default function DashboardClient() {
                     >
                       <defs>
                         <linearGradient id="bar-normal" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#818cf8" stopOpacity={0.7} />
-                          <stop offset="100%" stopColor="#312e81" stopOpacity={0.7} />
+                          <stop offset="0%" stopColor="#6366f1" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#312e81" stopOpacity={0.1} />
                         </linearGradient>
                         <linearGradient id="bar-selected" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6366f1" stopOpacity={1} />
-                          <stop offset="100%" stopColor="#1e1b4b" stopOpacity={1} />
+                          <stop offset="0%" stopColor="#a855f7" stopOpacity={1} />
+                          <stop offset="100%" stopColor="#6366f1" stopOpacity={0.4} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                       <XAxis 
                         dataKey="name" 
-                        stroke="#94a3b8" 
+                        stroke="var(--muted-foreground)" 
                         fontSize={13} 
                         fontWeight={700}
                         axisLine={false} 
                         tickLine={false} 
                       />
                       <YAxis 
-                        stroke="#94a3b8" 
+                        stroke="var(--muted-foreground)" 
                         fontSize={12} 
                         fontWeight={600}
                         axisLine={false} 
@@ -869,13 +860,13 @@ export default function DashboardClient() {
                   </ResponsiveContainer>
                 </div>
                 
-                <div className="flex justify-center gap-6 mt-6 text-sm text-slate-400 font-bold border-t border-slate-900 pt-5">
+                <div className="flex justify-center gap-6 mt-6 text-sm text-muted-foreground font-bold border-t border-border pt-5">
                   <div className="flex items-center gap-2">
-                    <span className="inline-block h-3.5 w-3.5 rounded bg-indigo-500/60 border border-indigo-400/20"></span>
+                    <span className="inline-block h-3.5 w-3.5 rounded bg-primary/40 border border-primary/20"></span>
                     Demais Meses
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="inline-block h-3.5 w-3.5 rounded bg-indigo-600 shadow-md shadow-indigo-500/20"></span>
+                    <span className="inline-block h-3.5 w-3.5 rounded bg-primary shadow-md shadow-primary/20"></span>
                     Mês Selecionado ({MONTH_NAMES[selectedMonthId]})
                   </div>
                 </div>
@@ -883,11 +874,11 @@ export default function DashboardClient() {
 
               {/* Informação sobre faturas pendentes */}
               {totalExpensesValue - totalPaidExpenses > 0 && (
-                <div className="rounded-2xl bg-amber-500/5 border border-amber-500/20 p-6 flex flex-col gap-2">
-                  <h4 className="font-extrabold text-amber-400 flex items-center gap-2 text-base">
+                <div className="rounded-2xl bg-primary/5 border border-primary/20 p-6 flex flex-col gap-2">
+                  <h4 className="font-extrabold text-primary flex items-center gap-2 text-base">
                     Contas Pendentes de Baixa
                   </h4>
-                  <p className="text-slate-300 text-sm font-medium">
+                  <p className="text-muted-foreground text-sm font-medium">
                     Ainda restam **R$ {(totalExpensesValue - totalPaidExpenses).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}** em faturas a marcar como pagas em {selectedMonth.name}.
                   </p>
                 </div>
@@ -899,7 +890,7 @@ export default function DashboardClient() {
 
         </main>
         
-        <footer className="mt-20 border-t border-slate-900 bg-slate-950 py-10 text-center text-slate-500 text-sm font-semibold tracking-wide">
+        <footer className="mt-20 border-t border-border bg-card py-10 text-center text-muted-foreground text-sm font-semibold tracking-wide">
           <p>© 2026 Controle Financeiro Premium do Sr. Flávio. Desenvolvido com sofisticação e acessibilidade máxima.</p>
         </footer>
 
@@ -909,7 +900,7 @@ export default function DashboardClient() {
 }
 
 // ==========================================================================
-// 4. COMPONENTE AUXILIAR: TABELA FINANCEIRA DE DESPESAS (DARK LUXURY)
+// 4. COMPONENTE AUXILIAR: TABELA FINANCEIRA DE DESPESAS (NATIVE DARK LUXURY)
 // ==========================================================================
 
 interface TableExpensesListProps {
@@ -953,13 +944,12 @@ function TableExpensesList({
     <div className="overflow-x-auto w-full">
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-slate-800 hover:bg-transparent">
-            <TableHead className="w-12 text-center">Paga?</TableHead> {/* Checkbox Pago */}
-            <TableHead className="w-1/3 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
-            <TableHead className="w-1/6 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
-            <TableHead className="w-1/4 text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Data de Pagamento</TableHead>
-            <TableHead className="w-1/5 text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
-            <TableHead className="w-12 text-center"></TableHead> {/* Lixeira (Exclusão total) */}
+          <TableRow className="border-b border-border hover:bg-transparent">
+            <TableHead className="w-[80px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
+            <TableHead className="font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
+            <TableHead className="w-[120px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
+            <TableHead className="w-[170px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
+            <TableHead className="w-[60px] text-center"></TableHead> {/* Lixeira */}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -984,7 +974,7 @@ function TableExpensesList({
               }
             } else if (exp.type === "fixed") {
               badgeComponent = (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/5 px-2.5 py-0.5 text-[11px] font-bold text-indigo-400/80 border border-indigo-500/10">
+                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/5 px-2.5 py-0.5 text-[11px] font-bold text-primary border border-primary/10">
                   Fixo
                 </span>
               );
@@ -1008,9 +998,9 @@ function TableExpensesList({
             return (
               <TableRow 
                 key={exp.id} 
-                className={`border-b border-slate-900/60 hover:bg-slate-900/20 transition-colors
-                  ${exp.paid ? "bg-emerald-950/20" : ""}
-                  ${isSaved ? "bg-indigo-950/20" : ""}
+                className={`border-b border-border/50 hover:bg-muted/10 transition-colors
+                  ${exp.paid ? "bg-emerald-950/10" : ""}
+                  ${isSaved ? "bg-primary/5" : ""}
                 `}
               >
                 {/* 1. Checkbox Pago */}
@@ -1020,7 +1010,7 @@ function TableExpensesList({
                     className={`h-7 w-7 rounded-full border-2 flex items-center justify-center transition-all focus:outline-none cursor-pointer
                       ${exp.paid 
                         ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20" 
-                        : "border-slate-700 bg-slate-950 hover:border-slate-500"
+                        : "border-slate-700 bg-background hover:border-slate-500"
                       }`}
                     title={exp.paid ? "Marcar como pendente" : "Marcar como pago"}
                   >
@@ -1028,36 +1018,39 @@ function TableExpensesList({
                   </button>
                 </TableCell>
 
-                {/* 2. Nome (Sanitizado sem asteriscos) */}
-                <TableCell className={`py-4 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"} ${exp.paid ? "line-through text-slate-500 font-medium" : ""}`}>
-                  {cleanName(exp.name)}
+                {/* 2. Nome + Data de Pagamento Integrada logo abaixo */}
+                <TableCell className={`py-4 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"}`}>
+                  <div className="flex flex-col">
+                    <span className={exp.paid ? "line-through text-slate-500 font-medium" : ""}>
+                      {cleanName(exp.name)}
+                    </span>
+                    
+                    {/* DATA DE PAGAMENTO INTEGRADA: Espaço horizontal poupado e layout 100% limpo! */}
+                    {exp.paid && (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400 font-semibold animate-fadeIn">
+                        <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-wide uppercase">Pago</span>
+                        <span>no dia:</span>
+                        <div className="relative inline-flex items-center gap-1.5 bg-slate-900 border border-border rounded-lg px-2 py-0.5 text-xs text-slate-200">
+                          <input
+                            type="date"
+                            value={exp.paymentDate || ""}
+                            onChange={(e) => onDateChange(exp.id, e.target.value)}
+                            className="bg-transparent border-none text-slate-200 font-bold focus:outline-none focus:ring-0 cursor-pointer text-xs w-28 h-6"
+                            title="Alterar data do pagamento"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </TableCell>
                 
                 {/* 3. Tipo Badge */}
                 <TableCell className="py-4">
                   {badgeComponent}
                 </TableCell>
-                
-                {/* 4. Data de Pagamento */}
-                <TableCell className="py-4 text-center">
-                  {exp.paid ? (
-                    <div className="inline-flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300">
-                      <CalendarDays className="h-4 w-4 text-indigo-400" />
-                      <input
-                        type="date"
-                        value={exp.paymentDate || ""}
-                        onChange={(e) => onDateChange(exp.id, e.target.value)}
-                        className="bg-transparent border-none text-slate-200 font-bold focus:outline-none focus:ring-0 cursor-pointer"
-                        title="Alterar data do pagamento"
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-xs text-slate-600 font-semibold italic">Pendente</span>
-                  )}
-                </TableCell>
 
-                {/* 5. Valor Editável */}
-                <TableCell className="py-4 text-right">
+                {/* 4. Valor Editável */}
+                <TableCell className="py-4 text-right whitespace-nowrap">
                   {isEditing ? (
                     <div className="flex items-center justify-end gap-1.5">
                       <span className="text-slate-500 text-sm font-bold">R$</span>
@@ -1070,7 +1063,7 @@ function TableExpensesList({
                           if (e.key === "Enter") handleSaveEdit(exp.id);
                           if (e.key === "Escape") setEditingId(null);
                         }}
-                        className="w-24 text-right font-extrabold text-indigo-400 border-2 border-indigo-500 bg-slate-950 h-9"
+                        className="w-28 text-right font-extrabold text-primary border-2 border-primary bg-background h-9"
                         autoFocus
                         step="0.01"
                       />
@@ -1078,7 +1071,7 @@ function TableExpensesList({
                   ) : (
                     <div 
                       onClick={() => handleStartEdit(exp)}
-                      className={`inline-flex items-center gap-2 cursor-pointer rounded-xl px-3 py-2 border border-slate-900/40 bg-slate-900/30 hover:border-indigo-500/30 hover:bg-indigo-950/20 hover:text-indigo-400 transition-all font-black text-right text-indigo-300
+                      className={`inline-flex items-center gap-2 cursor-pointer rounded-xl px-3.5 py-2 border border-border bg-background/50 hover:border-primary/30 hover:bg-muted text-primary whitespace-nowrap
                         ${isFuture && exp.value === 0 && exp.type === "consumption" 
                           ? "border-dashed border-amber-500/40 bg-amber-500/5 text-amber-400 hover:border-amber-500/60 hover:bg-amber-950/20" 
                           : ""
@@ -1097,11 +1090,11 @@ function TableExpensesList({
                   )}
                 </TableCell>
 
-                {/* 6. Excluir Conta por Padrão */}
+                {/* 5. Excluir Conta por Padrão */}
                 <TableCell className="py-4 text-center">
                   <button
                     onClick={() => onDelete(exp.id)}
-                    className="text-slate-600 hover:text-red-500 p-2 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer"
+                    className="text-slate-500 hover:text-red-500 p-2 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer"
                     title="Excluir esta conta da lista deste mês"
                   >
                     <Trash2 className="h-4.5 w-4.5" />
@@ -1142,16 +1135,15 @@ function CustomChartTooltip({ active, payload }: CustomChartTooltipProps) {
     const name = currentMonthData.name;
 
     return (
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/95 backdrop-blur-md p-4.5 shadow-2xl flex flex-col gap-1.5 text-sm">
-        <h4 className="font-black text-slate-100 text-base border-b border-slate-900 pb-1.5 capitalize">{name} 2026</h4>
-        <p className="font-semibold text-slate-400">
+      <div className="rounded-2xl border border-border bg-card p-4.5 shadow-2xl flex flex-col gap-1.5 text-sm text-foreground">
+        <h4 className="font-black text-white text-base border-b border-border pb-1.5 capitalize">{name} 2026</h4>
+        <p className="font-semibold text-muted-foreground">
           Receitas: <span className="text-emerald-400 font-extrabold">R$ {income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
         </p>
-        <p className="font-semibold text-slate-400">
+        <p className="font-semibold text-muted-foreground">
           Total Gastos: <span className="text-rose-400 font-extrabold">R$ {grossSum.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
         </p>
-        <p className={`font-black border-t border-slate-900 pt-1.5 mt-1.5
-          ${balance >= 0 ? "text-indigo-400" : "text-red-500"}`}>
+        <p className="font-black border-t border-border pt-1.5 mt-1.5 text-primary">
           Saldo Disponível: R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
         </p>
       </div>

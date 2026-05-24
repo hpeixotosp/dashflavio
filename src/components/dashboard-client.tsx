@@ -218,7 +218,8 @@ const generateInitialDashboardData = (): MonthData[] => {
         type: "adjustment",
         value: 250.00, // Crédito recorrente fixado de 250 reais
         isAsterisk: false,
-        paid: false,
+        paid: true, // Já entra como PAGO automaticamente por padrão!
+        paymentDate: new Date().toLocaleDateString("sv-SE"), // Preenchido automaticamente com a data de hoje
         installments: {
           current: denteInstallmentNum,
           total: 18
@@ -263,8 +264,8 @@ export default function DashboardClient() {
   const [newCreditInstallments, setNewCreditInstallments] = useState<string>("1");
 
   useEffect(() => {
-    // Nova chave V9 para recarregar com Dente crédito e Farmácia débito variável
-    const stored = localStorage.getItem("dashflavio_data_v9");
+    // Nova chave V10 para recarregar com Dente pago por padrão
+    const stored = localStorage.getItem("dashflavio_data_v10");
     if (stored) {
       try {
         setData(JSON.parse(stored));
@@ -274,7 +275,7 @@ export default function DashboardClient() {
     } else {
       const initial = generateInitialDashboardData();
       setData(initial);
-      localStorage.setItem("dashflavio_data_v9", JSON.stringify(initial));
+      localStorage.setItem("dashflavio_data_v10", JSON.stringify(initial));
     }
 
     const storedTextSize = localStorage.getItem("dashflavio_large_text");
@@ -351,7 +352,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v9", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
   };
 
   // Alterar data de pagamento manualmente
@@ -369,7 +370,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v9", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
   };
 
   // Alterar Provento do Mês
@@ -381,7 +382,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v9", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
   };
 
   // Alterar valor da despesa na tabela
@@ -400,7 +401,7 @@ export default function DashboardClient() {
     });
     
     setData(updated);
-    localStorage.setItem("dashflavio_data_v9", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
 
     setSavedFeedbacks(prev => ({ ...prev, [expenseId]: true }));
     setTimeout(() => {
@@ -418,7 +419,7 @@ export default function DashboardClient() {
         return m;
       });
       setData(updated);
-      localStorage.setItem("dashflavio_data_v9", JSON.stringify(updated));
+      localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
     }
   };
 
@@ -458,7 +459,7 @@ export default function DashboardClient() {
     });
 
     setData(updated);
-    localStorage.setItem("dashflavio_data_v9", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
 
     setNewAccName("");
     setNewAccValue("");
@@ -503,7 +504,7 @@ export default function DashboardClient() {
     });
 
     setData(updated);
-    localStorage.setItem("dashflavio_data_v9", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v10", JSON.stringify(updated));
 
     setNewCreditName("");
     setNewCreditValue("");

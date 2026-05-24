@@ -5,8 +5,6 @@ import {
   TrendingUp, 
   TrendingDown, 
   Wallet, 
-  ChevronLeft, 
-  ChevronRight, 
   Download, 
   Zap, 
   Calendar, 
@@ -61,7 +59,7 @@ import {
 } from "recharts";
 
 // ==========================================================================
-// 1. MODELOS E ESTRUTURAS DE DADOS (V2 - SEM ABRIL)
+// 1. MODELOS E ESTRUTURAS DE DADOS (V4)
 // ==========================================================================
 
 interface Expense {
@@ -69,9 +67,9 @@ interface Expense {
   name: string;
   type: "consumption" | "fixed" | "installment" | "adjustment";
   value: number;
-  isAsterisk: boolean; // Mantido internamente para identificar variáveis
-  paid: boolean; // Controle de pago
-  paymentDate?: string; // Data em que a conta foi paga (YYYY-MM-DD)
+  isAsterisk: boolean; // Identificação interna de variável
+  paid: boolean; // Se está pago
+  paymentDate?: string; // Data do pagamento
   installments?: {
     current: number;
     total: number;
@@ -85,7 +83,6 @@ interface MonthData {
   expenses: Expense[];
 }
 
-// Inicia em Maio de 2026 até Dezembro de 2026 (8 meses)
 const MONTHS_ORDER = [
   "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
 ];
@@ -101,7 +98,7 @@ const MONTH_NAMES: Record<string, string> = {
   dezembro: "Dezembro"
 };
 
-// Despesas gerais descritas no início (valores base de Abril para propagação)
+// Despesas base oriundas de Abril
 const BASE_GENERAL_EXPENSES = [
   { id: "sabesp", name: "Sabesp", type: "consumption", value: 100.00, isAsterisk: true },
   { id: "cpfl", name: "CPFL", type: "consumption", value: 414.95, isAsterisk: true },
@@ -119,7 +116,7 @@ const BASE_SPECIFIC_EXPENSES = [
   { id: "vivo", name: "Vivo", type: "fixed", value: 150.00, isAsterisk: false },
   { id: "osan", name: "OSAN", type: "fixed", value: 65.00, isAsterisk: false },
   
-  // Parcelas ativas em Abril (Gran 10/12, Pia 18/18, etc.)
+  // Parcelas
   { id: "gran", name: "Gran", type: "installment", value: 135.00, isAsterisk: false, installments: { current: 10, total: 12 } },
   { id: "pia", name: "Pia", type: "installment", value: 20.00, isAsterisk: false, installments: { current: 18, total: 18 } },
   { id: "clovis_celular", name: "Clovis celular", type: "installment", value: 65.00, isAsterisk: false, installments: { current: 11, total: 12 } },
@@ -140,45 +137,42 @@ const BASE_SPECIFIC_EXPENSES = [
 ];
 
 // ==========================================================================
-// 2. LOGICA DE GERAÇÃO DOS DADOS INICIALIZANDO EM MAIO
+// 2. FUNÇÃO GERADORA DE DADOS ANUAIS (REGRA DE MAIO - COMPLETA)
 // ==========================================================================
 const generateInitialDashboardData = (): MonthData[] => {
   const data: MonthData[] = [];
 
   MONTHS_ORDER.forEach((monthId, index) => {
-    // Provento padrão para todos os meses (a partir de Maio) é R$ 8.480,00
     const proventos = 8480.00;
     const expenses: Expense[] = [];
 
-    // index indica a evolução desde Maio (Maio = 0, Junho = 1, Julho = 2, etc.)
-    // Como Maio é o primeiro mês e a base de cálculo de parcelas era Abril,
-    // as parcelas em Maio devem estar com o valor de (Abril + 1 mês).
+    // index indica a evolução desde Maio (Maio = 0, Junho = 1, etc.)
     const monthsSinceApril = index + 1;
 
-    // 1. Contas de consumo e fixas da lista geral
+    // 1. Gerais
     BASE_GENERAL_EXPENSES.forEach(exp => {
       if (exp.isAsterisk) {
-        // ZERADAS a partir de Maio conforme regra
+        // ZERADAS por padrão a partir de Maio. Sr. Flávio ajusta manualmente.
         expenses.push({ ...JSON.parse(JSON.stringify(exp)), value: 0.00, paid: false });
       } else {
         expenses.push({ ...JSON.parse(JSON.stringify(exp)), paid: false });
       }
     });
 
-    // 2. Despesas específicas fixas extras (Casa, Vivo, OSAN)
+    // 2. Fixas específicas (Casa, Vivo, OSAN)
     expenses.push(
       { id: "casa", name: "Casa", type: "fixed", value: 1500.00, isAsterisk: false, paid: false },
       { id: "vivo", name: "Vivo", type: "fixed", value: 150.00, isAsterisk: false, paid: false },
       { id: "osan", name: "OSAN", type: "fixed", value: 65.00, isAsterisk: false, paid: false }
     );
 
-    // 3. Despesas específicas de consumo (Compras e IFOOD) - Zeradas a partir de Maio
+    // 3. Consumo específicas (Compras e IFOOD) - Zeradas a partir de Maio
     expenses.push(
       { id: "compras", name: "Compras", type: "consumption", value: 0.00, isAsterisk: true, paid: false },
       { id: "ifood", name: "IFOOD", type: "consumption", value: 0.00, isAsterisk: true, paid: false }
     );
 
-    // 4. Lógica de parcelas decrementando de forma dinâmica
+    // 4. Lógica de parcelas decrementando
     BASE_SPECIFIC_EXPENSES.forEach(exp => {
       if (exp.type === "installment" && exp.installments) {
         const nextInstallmentNum = exp.installments.current + monthsSinceApril;
@@ -210,21 +204,18 @@ const generateInitialDashboardData = (): MonthData[] => {
   return data;
 };
 
-// Sanitização de nomes de exibição (garante a remoção total de asteriscos na UI)
+// Sanitização robusta para limpar asteriscos dos nomes na tela
 const cleanName = (name: string) => {
   return name.replace(/\*/g, "").trim();
 };
 
-// ==========================================================================
-// 3. COMPONENTE PRINCIPAL (PREMIUM DARK COM GERENCIAMENTO DE GASTOS)
-// ==========================================================================
 export default function DashboardClient() {
   const [data, setData] = useState<MonthData[]>([]);
   const [selectedMonthId, setSelectedMonthId] = useState<string>("maio");
   const [savedFeedbacks, setSavedFeedbacks] = useState<Record<string, boolean>>({});
   const [isLargeText, setIsLargeText] = useState<boolean>(false);
 
-  // Estados do formulário de adicionar nova conta
+  // Formulário de Nova Conta
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [newAccName, setNewAccName] = useState<string>("");
   const [newAccValue, setNewAccValue] = useState<string>("");
@@ -232,8 +223,8 @@ export default function DashboardClient() {
   const [newAccInstallments, setNewAccInstallments] = useState<string>("1");
 
   useEffect(() => {
-    // Usamos a chave V3 para recarregar o estado limpo a partir de Maio e sem asteriscos
-    const stored = localStorage.getItem("dashflavio_data_v3");
+    // Usamos a chave V4 para carregar a nova arquitetura sem conflitos
+    const stored = localStorage.getItem("dashflavio_data_v4");
     if (stored) {
       try {
         setData(JSON.parse(stored));
@@ -243,7 +234,7 @@ export default function DashboardClient() {
     } else {
       const initial = generateInitialDashboardData();
       setData(initial);
-      localStorage.setItem("dashflavio_data_v3", JSON.stringify(initial));
+      localStorage.setItem("dashflavio_data_v4", JSON.stringify(initial));
     }
 
     const storedTextSize = localStorage.getItem("dashflavio_large_text");
@@ -255,7 +246,7 @@ export default function DashboardClient() {
   if (data.length === 0) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
-        <p className="text-xl font-bold text-blue-400 animate-pulse font-sans tracking-wide">Iniciando Lady&apos;s House...</p>
+        <p className="text-xl font-bold text-blue-400 animate-pulse font-sans tracking-wide">Carregando painel...</p>
       </div>
     );
   }
@@ -263,52 +254,50 @@ export default function DashboardClient() {
   const selectedMonth = data.find(m => m.id === selectedMonthId) || data[0];
 
   // ==========================================================================
-  // CÁLCULOS DINÂMICOS
+  // CÁLCULOS DINÂMICOS (AS CONTAS SÃO CONSIDERADAS POR PADRÃO!)
   // ==========================================================================
   const proventosValue = selectedMonth.proventos;
 
-  // Separação de despesas
   const consumptionExpenses = selectedMonth.expenses.filter(e => e.type === "consumption");
   const fixedExpenses = selectedMonth.expenses.filter(e => e.type === "fixed");
   const installmentExpenses = selectedMonth.expenses.filter(e => e.type === "installment");
   const adjustments = selectedMonth.expenses.filter(e => e.type === "adjustment");
 
-  // Gastos Brutos Planejados (sem reembolsos)
+  // 1. Saídas (Total de Gastos) = Todas as contas ativas listadas no mês são consideradas por padrão!
+  // Não é necessário clicar em nada para considerá-las.
   const grossExpenses = 
     consumptionExpenses.reduce((sum, e) => sum + e.value, 0) +
     fixedExpenses.reduce((sum, e) => sum + e.value, 0) +
     installmentExpenses.reduce((sum, e) => sum + e.value, 0);
 
-  // Reembolsos
+  // Total de reembolsos/descontos
   const totalAdjustments = adjustments.reduce((sum, e) => sum + e.value, 0);
 
-  // Total Projetado Líquido
-  const totalProjectedExpenses = Math.max(0, grossExpenses - totalAdjustments);
+  // Total de Gastos (Saídas) final considerado
+  const totalExpensesValue = Math.max(0, grossExpenses - totalAdjustments);
 
-  // REGRA DE CONTAS PAGAS
-  // 1. Saídas (Total Pago) = Soma de todas as despesas marcadas como PAGAS
+  // Total das contas dadas como pagas (para alertas de pendência)
   const totalPaidExpenses = selectedMonth.expenses
     .filter(e => e.paid && e.type !== "adjustment")
     .reduce((sum, e) => sum + e.value, 0);
 
   // 2. Entradas = Proventos + Reembolsos
-  const totalIncomeAvailable = proventosValue + totalAdjustments;
+  const totalIncomeValue = proventosValue + totalAdjustments;
 
-  // 3. Saldo Disponível = Entradas - Saídas
-  const balanceAvailable = Math.max(-99999, totalIncomeAvailable - totalPaidExpenses);
+  // 3. Saldo Disponível (Diferença) = Entradas - Saídas (Gastos considerados por padrão!)
+  const balanceAvailable = totalIncomeValue - totalExpensesValue;
 
   // ==========================================================================
-  // EDITORES DE ESTADO E EVENTOS
+  // EDITORES DE ESTADO E PERSISTÊNCIA
   // ==========================================================================
   
-  // Alternar Pago / Pendente com Data de Pagamento Automática
+  // Alternar Pago / Pendente com Preenchimento Automático de Data
   const handleTogglePaid = (expenseId: string) => {
     const updated = data.map(m => {
       if (m.id === selectedMonthId) {
         const updatedExpenses = m.expenses.map(e => {
           if (e.id === expenseId) {
             const isPaying = !e.paid;
-            // Preenche com o dia de hoje (no fuso local YYYY-MM-DD) se estiver marcando como pago
             const todayStr = isPaying ? new Date().toLocaleDateString("sv-SE") : ""; 
             return {
               ...e,
@@ -323,7 +312,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v3", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
   };
 
   // Alterar data de pagamento manualmente
@@ -341,7 +330,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v3", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
   };
 
   // Alterar Provento do Mês
@@ -353,7 +342,7 @@ export default function DashboardClient() {
       return m;
     });
     setData(updated);
-    localStorage.setItem("dashflavio_data_v3", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
   };
 
   // Alterar valor da despesa na tabela
@@ -372,7 +361,7 @@ export default function DashboardClient() {
     });
     
     setData(updated);
-    localStorage.setItem("dashflavio_data_v3", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
 
     setSavedFeedbacks(prev => ({ ...prev, [expenseId]: true }));
     setTimeout(() => {
@@ -380,9 +369,9 @@ export default function DashboardClient() {
     }, 1000);
   };
 
-  // Excluir qualquer conta por padrão! ("Elas devem ter a opção de ser excluídas. Não o contrário.")
+  // Excluir qualquer conta! ("eu devo ter a opção de excluí-la.")
   const handleDeleteExpense = (expenseId: string) => {
-    if (confirm("Você deseja realmente excluir esta conta deste mês?")) {
+    if (confirm("Você deseja realmente excluir esta conta da lista deste mês? O total de gastos e o saldo serão atualizados imediatamente.")) {
       const updated = data.map(m => {
         if (m.id === selectedMonthId) {
           return { ...m, expenses: m.expenses.filter(e => e.id !== expenseId) };
@@ -390,7 +379,7 @@ export default function DashboardClient() {
         return m;
       });
       setData(updated);
-      localStorage.setItem("dashflavio_data_v3", JSON.stringify(updated));
+      localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
     }
   };
 
@@ -430,7 +419,7 @@ export default function DashboardClient() {
     });
 
     setData(updated);
-    localStorage.setItem("dashflavio_data_v3", JSON.stringify(updated));
+    localStorage.setItem("dashflavio_data_v4", JSON.stringify(updated));
 
     setNewAccName("");
     setNewAccValue("");
@@ -446,7 +435,7 @@ export default function DashboardClient() {
     )}`;
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", jsonString);
-    downloadAnchor.setAttribute("download", `dashflavio_backup_2026.json`);
+    downloadAnchor.setAttribute("download", `dashflavio_backup.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -459,29 +448,29 @@ export default function DashboardClient() {
   };
 
   // ==========================================================================
-  // ESTRUTURAÇÃO DOS DADOS DO GRÁFICO (EVOLUÇÃO DOS PAGOS)
+  // ESTRUTURAÇÃO DE DADOS PARA O GRÁFICO (GASTOS TOTAIS PROJETADOS POR PADRÃO)
   // ==========================================================================
   const chartData = data.map(m => {
-    const mPaid = m.expenses
-      .filter(e => e.paid && e.type !== "adjustment")
-      .reduce((sum, e) => sum + e.value, 0);
+    const mConsumption = m.expenses.filter(e => e.type === "consumption").reduce((sum, e) => sum + e.value, 0);
+    const mFixed = m.expenses.filter(e => e.type === "fixed").reduce((sum, e) => sum + e.value, 0);
+    const mInstallments = m.expenses.filter(e => e.type === "installment").reduce((sum, e) => sum + e.value, 0);
+    const mAdjustments = m.expenses.filter(e => e.type === "adjustment").reduce((sum, e) => sum + e.value, 0);
+    const mTotal = Math.max(0, (mConsumption + mFixed + mInstallments) - mAdjustments);
 
     return {
       id: m.id,
       name: m.name,
-      "Gastos Pagos": Number(mPaid.toFixed(2)),
+      "Total Gastos": Number(mTotal.toFixed(2)),
       "Receitas": m.proventos
     };
   });
 
-  const currentIndex = MONTHS_ORDER.indexOf(selectedMonthId);
-
   return (
     <TooltipProvider>
-      <div className={`min-h-screen bg-slate-950 font-sans antialiased text-slate-100 selection:bg-indigo-500 selection:text-white ${isLargeText ? "text-lg md:text-xl" : "text-base"}`}>
+      <div className={`min-h-screen bg-slate-955 font-sans antialiased text-slate-100 selection:bg-indigo-500 selection:text-white ${isLargeText ? "text-lg md:text-xl" : "text-base"}`}>
         
         {/* ==========================================================================
-           HEADER ULTRA-PREMIUM DEFAULT DARK LUXURY
+           HEADER PREMIUM DEFAULT DARK LUXURY
            ========================================================================== */}
         <header className="sticky top-0 z-50 w-full border-b border-slate-900 bg-slate-950/85 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 md:px-8">
@@ -655,7 +644,7 @@ export default function DashboardClient() {
           </section>
 
           {/* ==========================================================================
-             CARTÕES DE RESUMO (DARK GLOW DESIGN)
+             CARTÕES DE RESUMO (AS CONTAS SÃO CONSIDERADAS POR PADRÃO!)
              ========================================================================== */}
           <section className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             
@@ -668,7 +657,7 @@ export default function DashboardClient() {
                 </div>
                 <div className="flex-1">
                   <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Minhas Entradas</span>
-                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5 block">Altere clicando no número:</span>
+                  <span className="text-[10px] text-slate-505 font-semibold mt-0.5 block">Altere clicando no número:</span>
                   <div className="relative mt-2.5 flex items-center">
                     <span className="mr-1 text-slate-400 font-bold text-xl">R$</span>
                     <input
@@ -686,7 +675,7 @@ export default function DashboardClient() {
               </div>
             </div>
 
-            {/* Card Gastos */}
+            {/* Card Gastos (Soma de todas as contas por padrão, não precisa clicar em nada!) */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950 p-7 border border-slate-900 shadow-xl shadow-slate-950/50 group hover:border-rose-500/20 transition-all duration-300">
               <div className="absolute right-0 top-0 h-32 w-32 bg-rose-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-rose-500/10 transition-all duration-300" />
               <div className="flex items-center gap-5">
@@ -694,17 +683,17 @@ export default function DashboardClient() {
                   <TrendingDown className="h-7 w-7 stroke-[2.5]" />
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Total Pago (Saídas)</span>
-                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5 block">Soma das contas pagas no mês:</span>
+                  <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Total de Gastos (Saídas)</span>
+                  <span className="text-[10px] text-slate-500 font-semibold mt-0.5 block">Soma de todas as despesas listadas:</span>
                   <p className={`font-black text-rose-400 mt-2.5 tracking-tight ${isLargeText ? "text-4xl" : "text-3xl"}`}>
-                    R$ {totalPaidExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    R$ {totalExpensesValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Card Saldo Final */}
-            <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-b p-7 border shadow-xl shadow-slate-950/50 transition-all duration-300 group
+            <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-b p-7 border shadow-xl shadow-slate-955/50 transition-all duration-300 group
               ${balanceAvailable >= 0 
                 ? "from-slate-900/90 to-slate-950 border-slate-900 hover:border-indigo-500/20" 
                 : "from-red-950/20 to-slate-950 border-red-950 hover:border-red-500/30"
@@ -722,7 +711,7 @@ export default function DashboardClient() {
                 </div>
                 <div>
                   <span className="text-slate-400 font-bold text-xs uppercase tracking-wider block">Saldo Disponível</span>
-                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Dinheiro livre em caixa:</span>
+                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Dinheiro líquido restante:</span>
                   <p className={`font-black mt-2.5 tracking-tight
                     ${balanceAvailable >= 0 ? "text-indigo-400" : "text-red-500"}
                     ${isLargeText ? "text-4xl" : "text-3xl"}`}>
@@ -750,7 +739,7 @@ export default function DashboardClient() {
                         Contas de <span className="capitalize text-indigo-400 font-black">{selectedMonth.name}</span>
                       </CardTitle>
                       <CardDescription className={`text-slate-400 font-medium ${isLargeText ? "text-base" : "text-sm"}`}>
-                        Dê um clique no valor em azul para atualizar. Marque a caixa para pagar a fatura e definir a data.
+                        Todas as contas são somadas por padrão. Marque a bola para dar baixa como PAGO e registrar a data. Clique na lixeira para excluir.
                       </CardDescription>
                     </div>
                   </div>
@@ -816,10 +805,10 @@ export default function DashboardClient() {
                 <div className="mb-6">
                   <h3 className={`font-black text-slate-100 flex items-center gap-2 ${isLargeText ? "text-2xl" : "text-xl"}`}>
                     <Sparkles className="h-6 w-6 text-indigo-400" />
-                    Evolução dos Pagamentos
+                    Gastos do Mês
                   </h3>
                   <p className="text-slate-400 font-medium text-xs mt-1">
-                    Histórico de gastos que foram dados como **pagos** de Maio a Dezembro de 2026.
+                    Este gráfico projeta o **Total de Gastos** considerado por padrão para cada mês de Maio a Dezembro de 2026.
                   </p>
                 </div>
                 
@@ -860,7 +849,7 @@ export default function DashboardClient() {
                         content={<CustomChartTooltip isLargeText={isLargeText} />} 
                       />
                       <Bar 
-                        dataKey="Gastos Pagos" 
+                        dataKey="Total Gastos" 
                         radius={[8, 8, 0, 0]} 
                         maxBarSize={40}
                       >
@@ -892,14 +881,14 @@ export default function DashboardClient() {
                 </div>
               </Card>
 
-              {/* Informação sobre contas pendentes */}
-              {totalProjectedExpenses - totalPaidExpenses > 0 && (
+              {/* Informação sobre faturas pendentes */}
+              {totalExpensesValue - totalPaidExpenses > 0 && (
                 <div className="rounded-2xl bg-amber-500/5 border border-amber-500/20 p-6 flex flex-col gap-2">
                   <h4 className="font-extrabold text-amber-400 flex items-center gap-2 text-base">
-                    Contas Pendentes
+                    Contas Pendentes de Baixa
                   </h4>
                   <p className="text-slate-300 text-sm font-medium">
-                    Ainda restam **R$ {(totalProjectedExpenses - totalPaidExpenses).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}** em contas a pagar no mês de {selectedMonth.name}.
+                    Ainda restam **R$ {(totalExpensesValue - totalPaidExpenses).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}** em faturas a marcar como pagas em {selectedMonth.name}.
                   </p>
                 </div>
               )}
@@ -965,7 +954,7 @@ function TableExpensesList({
       <Table>
         <TableHeader>
           <TableRow className="border-b border-slate-800 hover:bg-transparent">
-            <TableHead className="w-12 text-center"></TableHead> {/* Checkbox */}
+            <TableHead className="w-12 text-center">Paga?</TableHead> {/* Checkbox Pago */}
             <TableHead className="w-1/3 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
             <TableHead className="w-1/6 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
             <TableHead className="w-1/4 text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Data de Pagamento</TableHead>
@@ -1147,9 +1136,9 @@ interface CustomChartTooltipProps {
 function CustomChartTooltip({ active, payload }: CustomChartTooltipProps) {
   if (active && payload && payload.length) {
     const currentMonthData = payload[0].payload;
-    const paidSum = payload[0].value;
+    const grossSum = payload[0].value;
     const income = currentMonthData.Receitas;
-    const balance = income - paidSum;
+    const balance = income - grossSum;
     const name = currentMonthData.name;
 
     return (
@@ -1159,11 +1148,11 @@ function CustomChartTooltip({ active, payload }: CustomChartTooltipProps) {
           Receitas: <span className="text-emerald-400 font-extrabold">R$ {income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
         </p>
         <p className="font-semibold text-slate-400">
-          Total Pago: <span className="text-rose-400 font-extrabold">R$ {paidSum.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+          Total Gastos: <span className="text-rose-400 font-extrabold">R$ {grossSum.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
         </p>
         <p className={`font-black border-t border-slate-900 pt-1.5 mt-1.5
           ${balance >= 0 ? "text-indigo-400" : "text-red-500"}`}>
-          Saldo Restante: R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          Saldo Disponível: R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
         </p>
       </div>
     );

@@ -295,13 +295,15 @@ export default function DashboardClient() {
   };
 
   useEffect(() => {
-    // Sincroniza e valida em segundo plano com o banco de dados Vercel KV (nuvem)
+    // Sincroniza com a nuvem: se o Redis tiver dados mais recentes, usa os da nuvem.
+    // Se o Redis estiver vazio, envia os dados locais (bootstrap inicial).
     const syncWithCloud = async () => {
       try {
         const res = await fetch("/api/data");
         const json = await res.json();
 
         if (json && json.data) {
+          // Nuvem tem dados — atualiza o estado local se necessário
           const cloudDataStr = JSON.stringify(json.data);
           const localDataStr = localStorage.getItem("dashflavio_data_v11");
 
@@ -311,8 +313,22 @@ export default function DashboardClient() {
           }
           return;
         }
+
+        // Nuvem está vazia — envia os dados locais para a nuvem (bootstrap)
+        const localDataStr = localStorage.getItem("dashflavio_data_v11");
+        if (localDataStr) {
+          const localData = JSON.parse(localDataStr);
+          if (Array.isArray(localData) && localData.length > 0) {
+            console.log("Redis vazio: enviando dados locais para a nuvem (bootstrap)...");
+            fetch("/api/data", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: localDataStr,
+            }).catch(() => {});
+          }
+        }
       } catch (err) {
-        console.warn("Banco de dados em nuvem offline ou não configurado (rodando localmente):", err);
+        console.warn("Banco de dados em nuvem offline ou não configurado:", err);
       }
 
       // Se não havia cache local e o banco falhou, gera dados iniciais padrão
@@ -325,10 +341,15 @@ export default function DashboardClient() {
 
     syncWithCloud();
 
+    // Polling a cada 30 segundos — garante que o celular receba atualizações do PC automaticamente
+    const syncInterval = setInterval(syncWithCloud, 30_000);
+
     const storedTextSize = localStorage.getItem("dashflavio_large_text");
     if (storedTextSize === "true") {
       setIsLargeText(true);
     }
+
+    return () => clearInterval(syncInterval);
   }, []);
 
   if (data.length === 0) {

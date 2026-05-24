@@ -1,55 +1,83 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
-  const kvRedisUrl = process.env.KV_REDIS_URL;
-  const kvUrl = process.env.KV_URL;
-  const kvRestApiUrl = process.env.KV_REST_API_URL;
-  const kvRestApiToken = process.env.KV_REST_API_TOKEN;
-  const redisUrl = process.env.REDIS_URL;
+const TEST_KEY = "dashflavio_debug_test";
 
-  // Mostra apenas o início de cada URL (sem credenciais)
-  const mask = (val?: string) => {
-    if (!val) return null;
-    // Mostra o protocolo e os primeiros 20 chars apenas
-    const parts = val.split("@");
-    if (parts.length > 1) {
-      return val.split("://")[0] + "://***@" + parts[parts.length - 1].substring(0, 30) + "...";
-    }
-    return val.substring(0, 30) + "...";
+async function getRedisClient() {
+  const redisUrl =
+    process.env.KV_REDIS_URL ||
+    process.env.KV_URL ||
+    process.env.REDIS_URL;
+
+  if (!redisUrl) return { client: null, urlMasked: null };
+
+  const { default: Redis } = await import("ioredis");
+
+  const client = new Redis(redisUrl, {
+    maxRetriesPerRequest: 2,
+    connectTimeout: 5000,
+    commandTimeout: 5000,
+    lazyConnect: true,
+    tls: redisUrl.startsWith("rediss://") ? {} : undefined,
+    enableReadyCheck: false,
+  });
+
+  await client.connect();
+
+  const parts = redisUrl.split("@");
+  const urlMasked = redisUrl.split("://")[0] + "://***@" + (parts[parts.length - 1]?.substring(0, 30) ?? "???") + "...";
+
+  return { client, urlMasked };
+}
+
+export async function GET() {
+  const results: Record<string, any> = {
+    envVars: {
+      KV_REDIS_URL: process.env.KV_REDIS_URL ? "✅ presente" : null,
+      KV_URL: process.env.KV_URL ? "✅ presente" : null,
+      KV_REST_API_URL: process.env.KV_REST_API_URL ? "✅ presente" : null,
+      KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN ? "✅ presente" : null,
+    },
+    ping: "não testado",
+    writeTest: "não testado",
+    readTest: "não testado",
+    mainDataExists: "não testado",
+    urlBeingTested: null,
   };
 
-  // Testa conexão Redis
-  let redisStatus = "não testado";
-  const urlToTest = kvRedisUrl || kvUrl || redisUrl;
+  let client = null;
+  try {
+    const { client: c, urlMasked } = await getRedisClient();
+    client = c;
+    results.urlBeingTested = urlMasked;
 
-  if (urlToTest) {
-    try {
-      const Redis = (await import("ioredis")).default;
-      const client = new Redis(urlToTest, {
-        maxRetriesPerRequest: 1,
-        connectTimeout: 5000,
-        tls: urlToTest.startsWith("rediss://") ? {} : undefined,
-      });
-
-      await client.ping();
-      redisStatus = "✅ CONECTADO (PING OK)";
-      await client.quit();
-    } catch (err: any) {
-      redisStatus = "❌ ERRO: " + err.message;
+    if (!client) {
+      results.ping = "❌ Nenhuma URL Redis encontrada";
+      return NextResponse.json(results);
     }
-  } else {
-    redisStatus = "❌ Nenhuma URL Redis encontrada";
+
+    // Teste PING
+    const ping = await client.ping();
+    results.ping = ping === "PONG" ? "✅ PONG" : "❌ " + ping;
+
+    // Teste de escrita
+    const writeRes = await client.set(TEST_KEY, "hello_" + Date.now(), "EX", 60);
+    results.writeTest = writeRes === "OK" ? "✅ Escrita OK" : "❌ " + writeRes;
+
+    // Teste de leitura
+    const readVal = await client.get(TEST_KEY);
+    results.readTest = readVal?.startsWith("hello_") ? "✅ Leitura OK: " + readVal : "❌ Valor: " + readVal;
+
+    // Verifica se há dados reais do dashboard
+    const mainData = await client.get("dashflavio_financial_data_v11");
+    results.mainDataExists = mainData
+      ? `✅ Dados encontrados (${Math.round(mainData.length / 1024)} KB)`
+      : "⚠️ Nenhum dado salvo ainda no Redis";
+
+  } catch (err: any) {
+    results.error = err.message;
+  } finally {
+    if (client) client.quit().catch(() => {});
   }
 
-  return NextResponse.json({
-    envVars: {
-      KV_REDIS_URL: mask(kvRedisUrl),
-      KV_URL: mask(kvUrl),
-      KV_REST_API_URL: mask(kvRestApiUrl),
-      KV_REST_API_TOKEN: kvRestApiToken ? "✅ presente" : null,
-      REDIS_URL: mask(redisUrl),
-    },
-    redisConnection: redisStatus,
-    urlBeingTested: mask(urlToTest),
-  });
+  return NextResponse.json(results, { status: 200 });
 }

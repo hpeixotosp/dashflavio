@@ -472,15 +472,15 @@ export default function DashboardClient() {
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 md:px-8">
             
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-indigo-500 text-white font-extrabold text-2xl shadow-xl shadow-primary/10 border border-primary/20">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-indigo-500 text-white font-black text-2xl shadow-xl shadow-primary/25 border border-primary/20 tracking-wider">
                 LH
               </div>
               <div>
-                <h1 className="font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent flex items-center gap-2 text-2xl md:text-3xl">
+                <h1 className="font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent flex items-center gap-2 text-2xl md:text-3xl">
                   Lady&apos;s House
                 </h1>
-                <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest mt-0.5">
-                  Controle financeiro Lady&apos;s House
+                <p className="text-muted-foreground/90 font-black text-[9px] md:text-[10px] uppercase tracking-[0.22em] mt-1">
+                  CONTROLE FINANCEIRO LADY&apos;S HOUSE
                 </p>
               </div>
             </div>
@@ -890,8 +890,8 @@ export default function DashboardClient() {
 
         </main>
         
-        <footer className="mt-20 border-t border-border bg-card py-10 text-center text-muted-foreground text-sm font-semibold tracking-wide">
-          <p>© 2026 Controle Financeiro Premium do Sr. Flávio. Desenvolvido com sofisticação e acessibilidade máxima.</p>
+        <footer className="mt-20 border-t border-border bg-card py-10 text-center text-muted-foreground text-sm font-black tracking-[0.1em] uppercase">
+          <p>© 2026 Controle Financeiro Lady&apos;s House</p>
         </footer>
 
       </div>

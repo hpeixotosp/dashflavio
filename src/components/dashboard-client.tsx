@@ -1145,9 +1145,8 @@ function TableExpensesList({
           <TableRow className="border-b border-border hover:bg-transparent">
             <TableHead className="px-1.5 md:px-3 font-extrabold text-slate-400 text-xs uppercase tracking-wider">Conta</TableHead>
             <TableHead className="px-1.5 md:px-3 hidden md:table-cell w-[80px] font-extrabold text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
-            <TableHead className="px-1.5 md:px-3 w-[90px] md:w-[120px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
+            <TableHead className="px-1.5 md:px-3 w-[100px] md:w-[120px] text-right font-extrabold text-slate-400 text-xs uppercase tracking-wider">Valor</TableHead>
             <TableHead className="px-1.5 md:px-3 w-[60px] md:w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Pago?</TableHead>
-            <TableHead className="px-1.5 md:px-3 w-[60px] md:w-[70px] text-center font-extrabold text-slate-400 text-xs uppercase tracking-wider">Excluir</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1201,29 +1200,40 @@ function TableExpensesList({
                   ${isSaved ? "bg-primary/5" : ""}
                 `}
               >
-                {/* 1. Nome + Data de Pagamento Integrada logo abaixo */}
+                {/* 1. Nome + Lixeira integrada + Data de Pagamento Integrada logo abaixo */}
                 <TableCell className={`px-1.5 md:px-3 py-3.5 font-bold text-slate-200 ${isLargeText ? "text-lg" : "text-base"}`}>
-                  <div className="flex flex-col">
-                    <span className={exp.paid && exp.type !== "adjustment" ? "line-through text-slate-500 font-medium" : ""}>
-                      {cleanName(exp.name)}
-                    </span>
+                  <div className="flex items-start gap-1.5 md:gap-2.5">
+                    {/* Botão de Excluir Integrado (Super Acessível e Economiza Espaço) */}
+                    <button
+                      onClick={() => onDelete(exp.id)}
+                      className="text-slate-500 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0 mt-0.5"
+                      title="Excluir este item da lista deste mês"
+                    >
+                      <Trash2 className="h-4 w-4 md:h-4.5 md:w-4.5" />
+                    </button>
                     
-                    {/* DATA DE PAGAMENTO INTEGRADA: Espaço horizontal poupado e layout 100% limpo! */}
-                    {exp.paid && exp.type !== "adjustment" && (
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400 font-semibold animate-fadeIn">
-                        <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-wide uppercase">Pago</span>
-                        <span>no dia:</span>
-                        <div className="relative inline-flex items-center gap-1.5 bg-slate-900 border border-border rounded-lg px-2 py-0.5 text-xs text-slate-200">
-                          <input
-                            type="date"
-                            value={exp.paymentDate || ""}
-                            onChange={(e) => onDateChange(exp.id, e.target.value)}
-                            className="bg-transparent border-none text-slate-200 font-bold focus:outline-none focus:ring-0 cursor-pointer text-xs w-28 h-6"
-                            title="Alterar data do pagamento"
-                          />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className={`truncate block ${exp.paid && exp.type !== "adjustment" ? "line-through text-slate-500 font-medium" : ""}`}>
+                        {cleanName(exp.name)}
+                      </span>
+                      
+                      {/* DATA DE PAGAMENTO INTEGRADA: Espaço horizontal poupado e layout 100% limpo! */}
+                      {exp.paid && exp.type !== "adjustment" && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400 font-semibold animate-fadeIn">
+                          <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-wide uppercase">Pago</span>
+                          <span>no dia:</span>
+                          <div className="relative inline-flex items-center gap-1.5 bg-slate-900 border border-border rounded-lg px-2 py-0.5 text-xs text-slate-200">
+                            <input
+                              type="date"
+                              value={exp.paymentDate || ""}
+                              onChange={(e) => onDateChange(exp.id, e.target.value)}
+                              className="bg-transparent border-none text-slate-200 font-bold focus:outline-none focus:ring-0 cursor-pointer text-xs w-28 h-6"
+                              title="Alterar data do pagamento"
+                            />
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 
@@ -1306,16 +1316,6 @@ function TableExpensesList({
                   )}
                 </TableCell>
 
-                {/* 5. Excluir Conta por Padrão */}
-                <TableCell className="px-1.5 md:px-3 py-3.5 text-center">
-                  <button
-                    onClick={() => onDelete(exp.id)}
-                    className="text-slate-500 hover:text-rose-500 p-2 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer"
-                    title="Excluir esta conta da lista deste mês"
-                  >
-                    <Trash2 className="h-4.5 w-4.5" />
-                  </button>
-                </TableCell>
               </TableRow>
             );
           })}
